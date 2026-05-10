@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/Kael_nivel1">
+        <file>Sprites/Nivel1/sprites nivel 1 kael.png</file>
+    </qresource>
+    <qresource prefix="/Kael_nivel2">
+        <file>Sprites/Nivel2/sprites nivel 2 kael.png</file>
+    </qresource>
+</RCC>
