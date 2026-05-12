@@ -43,12 +43,8 @@ void Personaje::actualizar(float dt){
     if (!keys[0] && !keys[1]) Vx = 0;
 
 
-    // Salto (solo al presionar, no al mantener)
-    // El salto se maneja por evento puntual, no por keys[]
-
     // Actualizar posición
     x += Vx * dt;
-    // y += Vy * dt;
 
     // Sincronizar sprite con posición lógica
     if (itemGrafico!=nullptr) itemGrafico->setPos(x, y);
