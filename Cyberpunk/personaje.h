@@ -1,71 +1,137 @@
 #ifndef PERSONAJE_H
 #define PERSONAJE_H
-#include "EntidadJuego.h"
+
+#include "entidadjuego.h"
 #include <QKeyEvent>
 #include <QPixmap>
 
+//Pruebas
+#include <QDebug>
+#include <QString>
 
-class Personaje:public EntidadJuego
+
+
+
+
+// ============================================================
+//  Personaje — Kael
+//
+//  Nivel 1:
+//    - Movimiento parabólico (gravedad real en actualizar)
+//    - Gran salto + doble salto
+//    - El viento (calculado por el nivel) se aplica vía aplicarViento()
+//    - Fricción en suelo
+//    - Colisiones con plataformas (resueltas por el nivel usando GestorFisicas)
+//
+//  Nivel 2:
+//    - Deslizamiento (slide) con duración limitada
+//    - Boost de velocidad temporal
+//    - FactorSigilo: reduce radio de detección del robot si va lento
+// ============================================================
+class Personaje : public EntidadJuego
 {
-private:
+public:
+    Personaje();
+    explicit Personaje(float x, float y);
+    ~Personaje() override;
 
+    // ── Entrada ─────────────────────────────────────────────
+    void keyPressed (int key);
+    void keyReleased(int key);
+
+    // Métodos de acción directa (llamados por MainWindow)
+    void saltar();
+    void activarBoost();
+    void activarDesliz();
+
+    // ── Actualización ────────────────────────────────────────
+    // dt en segundos; tiempoTotal = tiempo acumulado de juego (para el viento)
+    // nivel: 1 → aplica gravedad + viento; 2 → aplica inercia
+    void actualizar(float dt) override;
+    void actualizarNivel1(float dt, float tiempoTotal);
+    void actualizarNivel2(float dt);
+
+    // Llamado por el nivel tras resolver colisiones
+    void aterrizarEnSuelo(float suloY);   // posiciona encima de la plataforma
+    void despegarSuelo();                 // al caer de un borde
+
+
+    //Cargado de Sprites
+    void cargarSprites();
+
+    // ── Getters ──────────────────────────────────────────────
+    int   getVidas()        const;
+    float getEnergia()      const;
+    bool  isEnSuelo()       const;
+    bool  isBoostActivo()   const;
+    bool  isDeslizando()    const;
+    float getFactorSigilo() const;
+    float getAncho()        const { return ANCHO; }
+    float getAlto()         const { return ALTO;  }
+
+    // Hitbox explícita para el sistema de colisiones (sin Qt).
+    // Coincide con el rectángulo del sprite: posición (x,y) + tamaño ANCHO×ALTO.
+    Hitbox getHitbox() const override { return Hitbox(x, y, ANCHO, ALTO); }
+
+    // ── Daño / reset ─────────────────────────────────────────
+    void recibirDanio(int cantidad = 1);
+    void resetearPosicion(float rx, float ry);
+
+private:
+    // ── Tamaño del sprite en px ──────────────────────────────
+    static constexpr float ANCHO = 70.f;
+    static constexpr float ALTO  = 124.f;
+
+    //vector con los cada frame cargado
+
+
+    QPixmap eliminarFondo(const QPixmap& source, QColor colorFondo, int tolerancia);
+     QVector<QPixmap> framesIdle;
+     QVector<QPixmap> framesCorriendo;
+     QVector<QPixmap> framesDeslizando;
+     QVector<QPixmap> framesBoost;
+
+     enum class EstadoAnim {
+         IDLE,
+         CORRIENDO,
+         DESLIZANDO,
+         BOOST
+     };
+
+
+    EstadoAnim    estadoAnim;       // estado actual de animación
+    int           frameActual;      // índice del frame visible ahora
+    float         tiempoFrame;      // tiempo acumulado en este frame
+    float         duracionFrame;    // segundos por frame (ej. 0.1f)
+    bool          miraDerecha;      // para voltear el sprite
 
     // ── Estado general ───────────────────────────────────────
-    int   vidas;              // Vidas restantes
-    float energia;            // Barra de energía (0-100)
-    float velMax;             // Velocidad horizontal máxima
-    bool  enSuelo;            // true si está sobre una plataforma
-    bool keys[4]={false};     //Movimientos 0 (Izq), 1(Der), 2(Up),3(Down)
-
+    int   vidas;
+    float energia;
+    float velMax;           // Velocidad horizontal máxima normal
+    bool  enSuelo;
+    bool  keys[4];          // 0=Izq, 1=Der, 2=Jump, 3=Down
 
     QPixmap *Sprite;
 
+    // ── Salto ────────────────────────────────────────────────
+    bool  puedeDoubleSalto;
+    float fuerzaSalto;
+    int   saltosRestantes;
 
-    // ── Características: Gran salto / doble salto ────────────
-    bool  puedeDoubleSalto;   // true si aún no ha usado el 2do salto
-    float fuerzaSalto=20;        // Fuerza vertical al saltar
-    int   saltosRestantes=1;    // 0 = no puede saltar, 1 = puede, 2 = doble salto
+    // ── Deslizamiento (Nivel 2) ──────────────────────────────
+    bool  deslizando;
+    float tiempoDesliz;
+    static constexpr float DURACION_DESLIZ_MAX = 0.8f;
 
-    // ── Característica: Deslizamiento (Nivel 2) ──────────────
-    bool  deslizando;         // true mientras el jugador se desliza
-    float tiempoDesliz;       // Duración del deslizamiento actual
-    float duracionDeslizMax;  // Duración máxima permitida (ej. 0.8 s)
+    // ── Boost de velocidad ───────────────────────────────────
+    bool  boostActivo;
+    float tiempoBoost;
+    static constexpr float DURACION_BOOST     = 3.f;
+    static constexpr float MULTIPLICADOR_BOOST = 2.0f;
 
-    // ── Característica: Boost de velocidad ───────────────────
-    bool  boostActivo;        // true mientras el boost está encendido
-    float tiempoBoost;        // Tiempo restante del boost actual
-    float duracionBoost;      // Duración total de cada boost (ej. 3 s)
-    float multiplicadorBoost; // Factor de velocidad extra (ej. 2.0)
-
-    // ── Reducción de radio de detección en sigilo ─────────────
-    // Nivel 2: moverse despacio reduce el radio de detección del robot
-    float factorSigilo;       // 0.5 si lento, 1.0 si rápido
-public:
-    Personaje();
-    Personaje(float x, float y);
-
-
-    void saltar();
-    void bajar();
-    void mover(int key, bool is_valid);
-    void actualizar(float dt) override;
-
-
-
-
-
-
-
-
-    // ── Getters de estado ────────────────────────────────────
-    int   getVidas()          const ;
-    float getEnergia()        const ;
-    bool  isEnSuelo()         const ;
-    bool  isBoostActivo()     const ;
-    bool  isDeslizando()      const ;
-    float getFactorSigilo()   const ;
-
-    ~Personaje() override;
+    // ── Sigilo ───────────────────────────────────────────────
+    float factorSigilo;
 };
 
 #endif // PERSONAJE_H
