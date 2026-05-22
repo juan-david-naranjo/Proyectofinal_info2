@@ -2,61 +2,89 @@
 #define NIVEL_1_H
 
 #include "nivel.h"
-
-//para el fondo
 #include <QPixmap>
 #include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsTextItem>
+#include <QGraphicsRectItem>
 
 // ============================================================
 //  Nivel_1 — Vista lateral, Jump-King style
 //
-//  Físicas activas:
-//    • Movimiento parabólico (gravedad en Personaje::actualizarNivel1)
-//    • Fricción con el viento (oscilatorio via GestorFisicas)
-//    • Movimiento oscilatorio del viento
-//    • Colisiones AABB con plataformas
+//  Sprite de fondo real: 1536 × 2752 px
+//  Escena lógica:         800 × 1433 px  (escala 0.5208)
 //
-//  Dinámica:
-//    • Subir plataformas antes de que se acabe el tiempo
-//    • Al agotarse el tiempo, se cierra la puerta (puertatCerrada=true)
-//    • Si el jugador cae, se reinicia desde el inicio
+//  La view escala uniformemente para que los 800 px lógicos
+//  llenen el ancho disponible. La cámara solo se mueve en Y
+//  mediante centerOn(), siguiendo al jugador.
+//  Esta configuración es EXCLUSIVA del nivel 1.
 // ============================================================
 class Nivel_1 : public Nivel
 {
 public:
-
-    QPixmap *Escenario;
-
+    QPixmap* Escenario;
+    bool     puertaCerrada;
 
     Nivel_1();
     ~Nivel_1() override;
 
-    float velocidadScroll;      // Desplazamiento de la cámara
-    bool  puertaCerrada;        // true = tiempo agotado, jugador no pasa
-
     void inicializar(Personaje* p) override;
-    void actualizar(float dt) override;
+    void actualizar(float dt)      override;
 
+    // Asigna escena y view; llamar ANTES de inicializar()
+    void setScene(QGraphicsScene* scene, QGraphicsView* view);
 
+    // Recalcula la escala cuando la ventana cambia de tamaño
+    // (llamar desde MainWindow::resizeEvent solo si nivelActual==1)
+    void aplicarEscalaView();
 
-    //para el escenario
-    void setScene(QGraphicsScene* scene);
+    // Restaura la view al estado neutro antes de pasar al nivel 2
+    void restaurarView();
 
 private:
-    static constexpr int TIEMPO_NIVEL = 90;   // segundos para llegar arriba
-    float timerAcumulado;
+    // ── Dimensiones lógicas ───────────────────────────────────
+    static constexpr float ESCENA_W     = 800.f;
+    static constexpr float ESCENA_H     = 1433.f;  // 2752*(800/1536)
 
-    // Posición de spawn del jugador
+    // ── Constantes del juego ──────────────────────────────────
+    static constexpr int   TIEMPO_NIVEL = 90;
+    static constexpr float LIMITE_CAIDA = ESCENA_H + 50.f;
+    static constexpr float META_Y       = 80.f;
+
+    // El jugador aparece a este offset por debajo del centro
+    static constexpr float CAM_OFFSET_Y = 150.f;
+
+    // ── Spawn ─────────────────────────────────────────────────
     float spawnX;
     float spawnY;
 
-    // Genera las plataformas del nivel (disposición vertical)
+    // ── Tiempo ────────────────────────────────────────────────
+    float timerAcumulado;
+
+    // ── Referencias Qt ────────────────────────────────────────
+    QGraphicsScene* escena;
+    QGraphicsView*  vista;
+
+    // ── Items gráficos de plataformas ─────────────────────────
+    QList<QGraphicsRectItem*> itemsPlataformas;
+
+    // ── HUD ───────────────────────────────────────────────────
+    QGraphicsRectItem* fondoHUD;
+    QGraphicsRectItem* fondoBarraTiempo;
+    QGraphicsRectItem* barraTiempo;
+    QGraphicsTextItem* hudTiempo;
+    QGraphicsTextItem* hudVidas;
+    QGraphicsTextItem* hudPuerta;
+
+    // ── Helpers ───────────────────────────────────────────────
     void generarPlataformas();
-
-    // Comprueba si el jugador cayó por debajo del nivel
+    void crearItemsPlataformas();
+    void limpiarItemsPlataformas();
+    void crearHUD();
+    void actualizarHUD();
+    void actualizarCamara();
     void verificarCaida();
-
-
+    void verificarVictoria();
 };
 
 #endif // NIVEL_1_H

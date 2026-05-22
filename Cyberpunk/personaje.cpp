@@ -3,28 +3,37 @@
 #include <algorithm>
 #include <cmath>
 
+// ============================================================
+//  Constructores
+// ============================================================
 Personaje::Personaje() : EntidadJuego(0, 0)
 {
     vidas          = 3;
     energia        = 100.f;
-    velMax         = 200.f;      // px/s
+    velMax         = 200.f;
     enSuelo        = false;
     std::fill(std::begin(keys), std::end(keys), false);
 
     puedeDoubleSalto = true;
-    fuerzaSalto      = 450.f;   // px/s inicial hacia arriba
-    saltosRestantes  = 2;        // doble salto habilitado
+    fuerzaSalto      = 460.f;
+    saltosRestantes  = 2;
+
+    tiempoViento     = 0.f;
 
     deslizando       = false;
     tiempoDesliz     = 0.f;
-
     boostActivo      = false;
     tiempoBoost      = 0.f;
-
     factorSigilo     = 1.f;
 
-    Sprite       = nullptr;
-    itemGrafico  = nullptr;
+    Sprite           = nullptr;
+    itemGrafico      = nullptr;
+
+    estadoAnim       = EstadoAnim::IDLE;
+    frameActual      = 0;
+    tiempoFrame      = 0.f;
+    duracionFrame    = 0.1f;
+    miraDerecha      = true;
 }
 
 Personaje::Personaje(float X, float Y) : Personaje()
@@ -33,22 +42,21 @@ Personaje::Personaje(float X, float Y) : Personaje()
     y = Y;
 
     itemGrafico = new QGraphicsPixmapItem();
-    // Sprite      = new QPixmap(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
 
-    cargarSprites();
+    // Intentar cargar sprites nivel 1; si falla, placeholder rojo
+    cargarSpritesNivel1();
 
+    if (n1_framesIdle.isEmpty())
+    {
+        QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
+        ph.fill(QColor(255, 80, 80));
+        itemGrafico->setPixmap(ph);
+    }
+    else
+    {
+        itemGrafico->setPixmap(n1_framesIdle[0]);
+    }
 
-
-
-    // if (!Sprite->isNull())
-    // {
-    //     /**/
-    //     /**/
-    //     itemGrafico->setPixmap(Sprite->copy(0,0, (int)ANCHO, (int)ALTO));
-    //     // qDebug("aqui crasheo");
-    // }
-    itemGrafico->setPixmap(QPixmap(50, 50));
-    itemGrafico->pixmap().fill(Qt::red);
     itemGrafico->setPos(x, y);
 }
 
@@ -57,11 +65,12 @@ Personaje::~Personaje()
     delete Sprite;
 }
 
-// ── Entrada ──────────────────────────────────────────────────────────────────
+// ============================================================
+//  Entrada
+// ============================================================
 void Personaje::keyPressed(int key)
 {
     if (key >= 0 && key < 4) keys[key] = true;
-
 }
 
 void Personaje::keyReleased(int key)
@@ -69,27 +78,45 @@ void Personaje::keyReleased(int key)
     if (key >= 0 && key < 4) keys[key] = false;
 }
 
-// ── Salto ─────────────────────────────────────────────────────────────────────
+// ============================================================
+//  Salto
+// ============================================================
 void Personaje::saltar()
 {
     if (saltosRestantes <= 0) return;
 
-    Vy = -fuerzaSalto;       // Negativo: sube en Qt (Y crece hacia abajo)
+    bool esDobleSalto = (saltosRestantes == 1);   // ya usó el primero
+
+    Vy = -fuerzaSalto;
     enSuelo = false;
     saltosRestantes--;
+
+    // Cambiar animación inmediatamente
+    if (esDobleSalto)
+    {
+        estadoAnim  = EstadoAnim::DOBLE_SALTO;
+        frameActual = 0;
+        tiempoFrame = 0.f;
+    }
+    else
+    {
+        estadoAnim  = EstadoAnim::SALTANDO;
+        frameActual = 0;
+        tiempoFrame = 0.f;
+    }
 
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
-// ── Boost ─────────────────────────────────────────────────────────────────────
+// ============================================================
+//  Boost / Deslizamiento (Nivel 2)
+// ============================================================
 void Personaje::activarBoost()
 {
-    boostActivo  = true;
-    tiempoBoost  = DURACION_BOOST;
+    boostActivo = true;
+    tiempoBoost = DURACION_BOOST;
 }
 
-
-// ── Deslizamiento ─────────────────────────────────────────────────────────────
 void Personaje::activarDesliz()
 {
     if (enSuelo && !deslizando)
@@ -99,84 +126,122 @@ void Personaje::activarDesliz()
     }
 }
 
-// ── actualizar genérico (usa nivel 1 por defecto) ─────────────────────────────
+// ============================================================
+//  actualizar genérico
+// ============================================================
 void Personaje::actualizar(float dt)
 {
-    // actualizarNivel1(dt, 0.f);
     actualizarNivel2(dt);
 }
 
-// ── Nivel 1 ───────────────────────────────────────────────────────────────────
+// ============================================================
+//  actualizarNivel1
+// ============================================================
 void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 {
-    // --- Velocidad horizontal según input ---
-    float velHoriz = 0.f;
+    // ── 1. Velocidad horizontal ───────────────────────────────
     float velEfectiva = boostActivo ? velMax * MULTIPLICADOR_BOOST : velMax;
+    float velHoriz    = 0.f;
 
-    if (keys[0]) velHoriz = -velEfectiva;
-    if (keys[1]) velHoriz =  velEfectiva;
+    if (keys[0]) { velHoriz = -velEfectiva; miraDerecha = false; }
+    if (keys[1]) { velHoriz =  velEfectiva; miraDerecha = true;  }
 
-    // Aplicar fricción solo si está en suelo y no hay input
     if (enSuelo && std::abs(velHoriz) < 0.01f)
-    {
         GestorFisicas::aplicarFriccion(Vx, dt);
+    else
+        Vx = velHoriz;
+
+    // ── 2. Viento (solo en el aire) ───────────────────────────
+    float fuerzaViento = 0.f;
+    if (!enSuelo)
+    {
+        fuerzaViento = GestorFisicas::calcularFuerzaViento(tiempoTotal);
+        GestorFisicas::aplicarViento(Vx, tiempoTotal, dt);
+        tiempoViento += dt;
     }
     else
     {
-        Vx = velHoriz;
+        tiempoViento = 0.f;
     }
 
-    // --- Viento oscilatorio (empuja horizontalmente) ---
-    // Solo si está en el aire (el suelo amortigua el viento)
-    if (!enSuelo)
-        GestorFisicas::aplicarViento(Vx, tiempoTotal, dt);
-
-    // --- Gravedad + posición vertical ---
-    // El nivel resuelve colisiones DESPUÉS de aplicarGravedad
+    // ── 3. Gravedad + posición vertical ───────────────────────
     GestorFisicas::aplicarGravedad(Vy, y, dt);
 
-    // --- Posición horizontal ---
+    // ── 4. Posición horizontal ────────────────────────────────
     x += Vx * dt;
 
-
-    // --- Boost: descontar tiempo ---
+    // ── 5. Timer de boost ─────────────────────────────────────
     if (boostActivo)
     {
         tiempoBoost -= dt;
-        if (tiempoBoost <= 0.f)
-        {
-            boostActivo = false;
-            tiempoBoost = 0.f;
-        }
+        if (tiempoBoost <= 0.f) { boostActivo = false; tiempoBoost = 0.f; }
     }
 
-    // --- Sincronizar sprite ---
+    // ── 6. Determinar estado de animación ─────────────────────
+    EstadoAnim nuevoEstado;
+
+    bool vientoFuerte = (std::abs(fuerzaViento) > GestorFisicas::VIENTO_AMPLITUD * 0.6f)
+                        && (tiempoViento > UMBRAL_VIENTO);
+
+    if (!enSuelo && vientoFuerte)
+        nuevoEstado = EstadoAnim::VIENTO_CAIDA;
+    else if (!enSuelo && estadoAnim == EstadoAnim::DOBLE_SALTO && frameActual < n1_framesDobleSalto.size() - 1)
+        nuevoEstado = EstadoAnim::DOBLE_SALTO;   // mantener hasta que termine
+    else if (!enSuelo && estadoAnim == EstadoAnim::SALTANDO && Vy < 0.f)
+        nuevoEstado = EstadoAnim::SALTANDO;
+    else if (!enSuelo)
+        nuevoEstado = EstadoAnim::COLISION;      // cayendo sin control
+    else if (std::abs(Vx) > 10.f)
+        nuevoEstado = EstadoAnim::CORRIENDO;
+    else
+        nuevoEstado = EstadoAnim::IDLE;
+
+    if (nuevoEstado != estadoAnim)
+    {
+        estadoAnim  = nuevoEstado;
+        frameActual = 0;
+        tiempoFrame = 0.f;
+    }
+
+    // ── 7. Seleccionar frames activos y avanzar animación ─────
+    QVector<QPixmap>* frames = nullptr;
+    switch (estadoAnim)
+    {
+    case EstadoAnim::IDLE:         frames = &n1_framesIdle;        break;
+    case EstadoAnim::CORRIENDO:    frames = &n1_framesCorriendo;   break;
+    case EstadoAnim::SALTANDO:     frames = &n1_framesSaltando;    break;
+    case EstadoAnim::DOBLE_SALTO:  frames = &n1_framesDobleSalto;  break;
+    case EstadoAnim::VIENTO_CAIDA: frames = &n1_framesVientoCalda; break;
+    case EstadoAnim::COLISION:     frames = &n1_framesColision;    break;
+    default:                       frames = &n1_framesIdle;        break;
+    }
+
+    bool loop = (estadoAnim != EstadoAnim::DOBLE_SALTO); // doble salto no looea
+    if (frames) tickAnimacion(dt, *frames, loop);
+
+    // ── 8. Flip horizontal ────────────────────────────────────
+    // (Aplicado dentro de tickAnimacion)
+
+    // ── 9. Sincronizar posición gráfica ───────────────────────
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
-// ── Nivel 2 ───────────────────────────────────────────────────────────────────
-// ── actualizarNivel2() CON ANIMACIONES ───────────────────────────────────────
+// ============================================================
+//  actualizarNivel2
+// ============================================================
 void Personaje::actualizarNivel2(float dt)
 {
     float velEfectiva = boostActivo ? velMax * MULTIPLICADOR_BOOST : velMax;
 
-    // ── 1. MOVIMIENTO CON INERCIA ─────────────────────────────────────────────
     if (deslizando)
     {
-        // Durante el desliz: inercia pura, sin input de dirección
         GestorFisicas::aplicarInercia(Vx, 0.f, dt);
         GestorFisicas::aplicarInercia(Vy, 0.f, dt);
-
         tiempoDesliz -= dt;
-        if (tiempoDesliz <= 0.f)
-        {
-            deslizando   = false;
-            tiempoDesliz = 0.f;
-        }
+        if (tiempoDesliz <= 0.f) { deslizando = false; tiempoDesliz = 0.f; }
     }
     else
     {
-        // Movimiento normal: aplica inercia hacia la velocidad objetivo
         float velObjetivoX = 0.f;
         if (keys[0]) { velObjetivoX = -velEfectiva; miraDerecha = false; }
         if (keys[1]) { velObjetivoX =  velEfectiva; miraDerecha = true;  }
@@ -191,21 +256,17 @@ void Personaje::actualizarNivel2(float dt)
     x += Vx * dt;
     y += Vy * dt;
 
-    // ── 2. FACTOR DE SIGILO ───────────────────────────────────────────────────
     float velTotal = std::sqrt(Vx*Vx + Vy*Vy);
     factorSigilo   = (velTotal < velMax * 0.4f) ? 0.5f : 1.f;
 
-    // ── 3. TIMER DE BOOST ─────────────────────────────────────────────────────
     if (boostActivo)
     {
         tiempoBoost -= dt;
         if (tiempoBoost <= 0.f) { boostActivo = false; tiempoBoost = 0.f; }
     }
 
-    // ── 4. DETERMINAR ESTADO DE ANIMACIÓN ────────────────────────────────────
-    //  Prioridad: Boost > Desliz > Corriendo > Idle
+    // Animación nivel 2
     EstadoAnim nuevoEstado;
-
     if (boostActivo)
         nuevoEstado = EstadoAnim::BOOST;
     else if (deslizando)
@@ -215,7 +276,6 @@ void Personaje::actualizarNivel2(float dt)
     else
         nuevoEstado = EstadoAnim::IDLE;
 
-    // Si cambió de estado, reinicia el frame para no quedar a mitad de animación
     if (nuevoEstado != estadoAnim)
     {
         estadoAnim  = nuevoEstado;
@@ -223,52 +283,56 @@ void Personaje::actualizarNivel2(float dt)
         tiempoFrame = 0.f;
     }
 
-    // ── 5. SELECCIONAR EL VECTOR DE FRAMES ACTIVO ────────────────────────────
-    QVector<QPixmap>* framesActivos = nullptr;
-
+    QVector<QPixmap>* frames = nullptr;
     switch (estadoAnim)
     {
-    case EstadoAnim::IDLE:        framesActivos = &framesIdle;        break;
-    case EstadoAnim::CORRIENDO:   framesActivos = &framesCorriendo;   break;
-    case EstadoAnim::DESLIZANDO:  framesActivos = &framesDeslizando;  break;
-    case EstadoAnim::BOOST:       framesActivos = &framesBoost;       break;
+    case EstadoAnim::IDLE:       frames = &framesIdle;       break;
+    case EstadoAnim::CORRIENDO:  frames = &framesCorriendo;  break;
+    case EstadoAnim::DESLIZANDO: frames = &framesDeslizando; break;
+    case EstadoAnim::BOOST:      frames = &framesBoost;      break;
+    default:                     frames = &framesIdle;       break;
     }
 
-    // ── 6. AVANZAR EL FRAME ───────────────────────────────────────────────────
-    if (framesActivos && !framesActivos->isEmpty())
-    {
-        tiempoFrame += dt;
-        if (tiempoFrame >= duracionFrame)
-        {
-            tiempoFrame  = 0.f;
-            frameActual  = (frameActual + 1) % framesActivos->size();
-        }
+    if (frames) tickAnimacion(dt, *frames, true);
 
-        // ── 7. APLICAR FRAME AL SPRITE (con flip horizontal) ─────────────────
-        QPixmap frame = framesActivos->at(frameActual);
-
-        // if (!miraDerecha)
-        //     frame = frame.transformed(QTransform().scale(-1, 1));
-
-        if (itemGrafico)
-            itemGrafico->setPixmap(frame);
-    }
-
-    // ── 8. SINCRONIZAR POSICIÓN ───────────────────────────────────────────────
-    if (itemGrafico)
-        itemGrafico->setPos(x, y);
+    if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
-
-
-
-// ── Colisión con suelo/plataforma ─────────────────────────────────────────────
-void Personaje::aterrizarEnSuelo(float suloY)
+// ============================================================
+//  tickAnimacion  — avanza frame y aplica al item gráfico
+// ============================================================
+void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
 {
-    y       = suloY - ALTO;
+    if (frames.isEmpty() || !itemGrafico) return;
+
+    tiempoFrame += dt;
+    if (tiempoFrame >= duracionFrame)
+    {
+        tiempoFrame = 0.f;
+        if (loop)
+            frameActual = (frameActual + 1) % frames.size();
+        else
+            frameActual = std::min(frameActual + 1, (int)frames.size() - 1);
+    }
+
+    QPixmap frame = frames[frameActual];
+
+    if (!miraDerecha)
+        frame = frame.transformed(QTransform().scale(-1, 1));
+
+    itemGrafico->setPixmap(frame);
+}
+
+// ============================================================
+//  Colisión con suelo
+// ============================================================
+void Personaje::aterrizarEnSuelo(float /*suloY*/)
+{
+    // La posición Y ya fue corregida por resolverColisiones()
     Vy      = 0.f;
     enSuelo = true;
-    saltosRestantes = 2;    // Recargar doble salto
+    saltosRestantes = 2;
+    tiempoViento    = 0.f;
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
@@ -277,126 +341,170 @@ void Personaje::despegarSuelo()
     enSuelo = false;
 }
 
-// ── cargarSprites() COMPLETO ──────────────────────────────────────────────────
+// ============================================================
+//  cargarSpritesNivel1
+//  Spritesheet: ":/Kael_nivel1/Sprites/Nivel1/sprites nivel 1 kael.png"
 //
-//  INSTRUCCIONES: Ajusta SOLO los valores de origen (origenX, origenY)
-//  y cantidad de frames (numFrames) para cada acción según tu spritesheet.
-//  El resto del código no cambia.
+//  Diseño observado en la imagen (aprox. 1400×730 px):
+//  ┌─────────────────────────────────────────────────────┐
+//  │ Fila 1 (y≈55):  IDLE(1f) + CORRER(8f)              │
+//  │ Fila 2 (y≈230): SALTAR(5f)      | DOBLE SALTO(5f)  │
+//  │ Fila 3 (y≈430): VIENTO CAIDA(5f)| COLISION(4f)     │
+//  └─────────────────────────────────────────────────────┘
 //
-void Personaje::cargarSprites()
+//  IMPORTANTE: estos valores son aproximados a partir del
+//  spritesheet de diseño. Ajústalos con un editor de imágenes
+//  si los frames no coinciden exactamente.
+// ============================================================
+void Personaje::cargarSpritesNivel1()
 {
-    QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
-
-    if (sheet.isNull()) {
-        qDebug() << "ERROR: No se pudo cargar la hoja de sprites.";
+    QPixmap sheet(":/Kael_nivel1/Sprites/Nivel1/sprites nivel 1 kael.png");
+    if (sheet.isNull())
+    {
+        qDebug() << "ERROR Nivel1: No se pudo cargar sprites nivel 1 kael.png";
         return;
     }
 
-    // ── Dimensiones de cada frame (igual para todas las acciones) ────────────
-    const int frameW = 70;
-    const int frameH = 70;
+    qDebug() << "Spritesheet N1 cargada:" << sheet.width() << "x" << sheet.height();
 
-    // ── Lambda helper: recorta N frames horizontales desde (ox, oy) ──────────
-    // Úsala para cada acción, solo cambia ox, oy y numFrames
-    // auto recortar = [&](QVector<QPixmap>& destino, int ox, int oy, int numFrames)
-    // {
-    //     int separacion= 9; //separacion entre animaciones
-    //     destino.clear();
-    //     for (int i = 0; i < numFrames; i++)
-    //     {
-    //         int xFinal = ox + (i * (frameW+separacion));
+    // ── Dimensiones de cada frame ────────────────────────────
+    const int FW = 120;   // ancho de cada frame en la hoja
+    const int FH = 160;   // alto  de cada frame en la hoja
+    const int SEP = 0;    // separación horizontal entre frames
 
-    //         if (xFinal + frameW <= sheet.width() &&
-    //             oy  + frameH <= sheet.height())
-    //         {
-    //             destino.append(sheet.copy(xFinal, oy, frameW, frameH));
-    //         }
-    //         else
-    //         {
-    //             qDebug() << "ERROR: Frame" << i << "fuera de la imagen en acción";
-    //             QPixmap placeholder(frameW, frameH);
-    //             placeholder.fill(Qt::magenta);   // magenta = error visible
-    //             destino.append(placeholder);
-    //         }
-    //     }
-    // };
-    auto recortar = [&](QVector<QPixmap>& destino, int ox, int oy, int numFrames)
+    // Color de fondo a eliminar (ajustar según la imagen real)
+    QColor fondoColor(0x0d, 0x0e, 0x1a);
+    int    tolerancia = 12;
+
+    // Lambda recortar
+    auto recortar = [&](QVector<QPixmap>& dest, int ox, int oy, int nFrames)
     {
-        destino.clear();
-        QColor fondoColor(0x31, 0x4d, 0x58); // color base del fondo
-        int tolerancia = 5; // cubre las variaciones 314b58, 324a56, 2f4b57
-
-        for (int i = 0; i < numFrames; i++)
+        dest.clear();
+        for (int i = 0; i < nFrames; ++i)
         {
-            int xFinal = ox + (i * (frameW + 8)); // +7 por la separación entre frames
-
-            if (xFinal + frameW <= sheet.width() && oy + frameH <= sheet.height())
+            int sx = ox + i * (FW + SEP);
+            if (sx + FW <= sheet.width() && oy + FH <= sheet.height())
             {
-                QPixmap frame = sheet.copy(xFinal, oy, frameW, frameH);
-                destino.append(eliminarFondo(frame, fondoColor, tolerancia));
+                QPixmap f = sheet.copy(sx, oy, FW, FH);
+                // Escalar al tamaño lógico del personaje
+                f = f.scaled(static_cast<int>(ANCHO),
+                             static_cast<int>(ALTO),
+                             Qt::KeepAspectRatio,
+                             Qt::SmoothTransformation);
+                dest.append(eliminarFondo(f, fondoColor, tolerancia));
             }
             else
             {
-                QPixmap placeholder(frameW, frameH);
-                placeholder.fill(Qt::transparent);
-                destino.append(placeholder);
+                QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
+                ph.fill(Qt::transparent);
+                dest.append(ph);
+                qDebug() << "WARN N1: frame" << i << "fuera de la hoja en ox=" << ox << "oy=" << oy;
             }
         }
     };
 
-    // ── Carga cada acción ─────────────────────────────────────────────────────
-    // TODO: Reemplaza los valores de origenX y origenY con los de tu spritesheet
-    //       Puedes usar una herramienta como LibreSprite o simplemente
-    //       abrir la imagen en paint y ver las coordenadas del pixel
+    // ── Cargar cada animación ─────────────────────────────────
+    //   Ajusta ox/oy según tu spritesheet real
+    //   (Valores basados en la imagen de diseño proporcionada)
 
-    //             destino           origenX  origenY  numFrames
-    recortar(framesIdle,         40,    136,     5);   // <-- ajusta tú
-    recortar(framesCorriendo,    40,   136,   5);   // ya lo tenías
-    recortar(framesDeslizando,   53,    335,     5);   // <-- ajusta tú
-    recortar(framesBoost,        450,    331,     2);   // <-- ajusta tú
+    // Fila 1 — IDLE: 1 frame al inicio, luego CORRER 8 frames
+    recortar(n1_framesIdle,      0,   55, 1);
+    recortar(n1_framesCorriendo, 130, 55, 8);
 
-    // ── Estado inicial ────────────────────────────────────────────────────────
+    // Fila 2 — SALTAR (5f) a la izquierda, DOBLE SALTO (5f) a la derecha
+    recortar(n1_framesSaltando,   0,  230, 5);
+    recortar(n1_framesDobleSalto, 720, 230, 5);
+
+    // Fila 3 — VIENTO CAIDA (5f) + impacto (1f) | COLISION (4f)
+    recortar(n1_framesVientoCalda, 0,   430, 5);
+    recortar(n1_framesColision,    720, 430, 4);
+
+    // Estado inicial
     estadoAnim    = EstadoAnim::IDLE;
     frameActual   = 0;
     tiempoFrame   = 0.f;
-    duracionFrame = 0.1f;   // 10 FPS de animación, ajusta a gusto
+    duracionFrame = 0.08f;   // ~12 FPS de animación
+    miraDerecha   = true;
+
+    qDebug() << "N1 sprites cargados — Idle:" << n1_framesIdle.size()
+             << "Correr:" << n1_framesCorriendo.size()
+             << "Saltar:" << n1_framesSaltando.size()
+             << "DobleSalto:" << n1_framesDobleSalto.size()
+             << "Viento:" << n1_framesVientoCalda.size()
+             << "Colision:" << n1_framesColision.size();
+}
+
+// ============================================================
+//  cargarSpritesNivel2  (igual que antes)
+// ============================================================
+void Personaje::cargarSpritesNivel2()
+{
+    QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
+    if (sheet.isNull()) {
+        qDebug() << "ERROR Nivel2: No se pudo cargar sprites nivel 2 kael.png";
+        return;
+    }
+
+    const int FW = 70;
+    const int FH = 70;
+    QColor fondoColor(0x31, 0x4d, 0x58);
+    int    tolerancia = 5;
+
+    auto recortar = [&](QVector<QPixmap>& dest, int ox, int oy, int nFrames)
+    {
+        dest.clear();
+        for (int i = 0; i < nFrames; ++i)
+        {
+            int sx = ox + i * (FW + 8);
+            if (sx + FW <= sheet.width() && oy + FH <= sheet.height())
+                dest.append(eliminarFondo(sheet.copy(sx, oy, FW, FH), fondoColor, tolerancia));
+            else
+            {
+                QPixmap ph(FW, FH); ph.fill(Qt::transparent);
+                dest.append(ph);
+            }
+        }
+    };
+
+    recortar(framesIdle,       40,  136, 5);
+    recortar(framesCorriendo,  40,  136, 5);
+    recortar(framesDeslizando, 53,  335, 5);
+    recortar(framesBoost,      450, 331, 2);
+
+    estadoAnim    = EstadoAnim::IDLE;
+    frameActual   = 0;
+    tiempoFrame   = 0.f;
+    duracionFrame = 0.1f;
     miraDerecha   = true;
 }
 
-
-
+// ============================================================
+//  eliminarFondo  — hace transparente el color de fondo
+// ============================================================
 QPixmap Personaje::eliminarFondo(const QPixmap& source, QColor colorFondo, int tolerancia)
 {
-    // Convertir a imagen para manipular píxel a píxel
     QImage img = source.toImage().convertToFormat(QImage::Format_ARGB32);
+    int r = colorFondo.red(), g = colorFondo.green(), b = colorFondo.blue();
 
-    int r = colorFondo.red();
-    int g = colorFondo.green();
-    int b = colorFondo.blue();
-
-    for (int y = 0; y < img.height(); y++)
+    for (int py = 0; py < img.height(); ++py)
     {
-        for (int x = 0; x < img.width(); x++)
+        for (int px = 0; px < img.width(); ++px)
         {
-            QColor pixel = img.pixelColor(x, y);
-
-            // Diferencia con el color de fondo
-            int dr = std::abs(pixel.red()   - r);
-            int dg = std::abs(pixel.green() - g);
-            int db = std::abs(pixel.blue()  - b);
-
-            // Si está dentro de la tolerancia, lo hace transparente
-            if (dr <= tolerancia && dg <= tolerancia && db <= tolerancia)
-                img.setPixelColor(x, y, Qt::transparent);
+            QColor pixel = img.pixelColor(px, py);
+            if (std::abs(pixel.red()   - r) <= tolerancia &&
+                std::abs(pixel.green() - g) <= tolerancia &&
+                std::abs(pixel.blue()  - b) <= tolerancia)
+            {
+                img.setPixelColor(px, py, Qt::transparent);
+            }
         }
     }
-
     return QPixmap::fromImage(img);
 }
 
-
-
-// ── Daño / reset ──────────────────────────────────────────────────────────────
+// ============================================================
+//  Daño / reset
+// ============================================================
 void Personaje::recibirDanio(int cantidad)
 {
     vidas -= cantidad;
@@ -406,16 +514,21 @@ void Personaje::recibirDanio(int cantidad)
 void Personaje::resetearPosicion(float rx, float ry)
 {
     x = rx; y = ry;
-    Vx = 0; Vy = 0;
-    enSuelo = false;
+    Vx = 0.f; Vy = 0.f;
+    enSuelo         = false;
     saltosRestantes = 2;
+    tiempoViento    = 0.f;
+    estadoAnim      = EstadoAnim::IDLE;
+    frameActual     = 0;
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
-// ── Getters ───────────────────────────────────────────────────────────────────
-int   Personaje::getVidas()        const { return vidas;        }
-float Personaje::getEnergia()      const { return energia;      }
-bool  Personaje::isEnSuelo()       const { return enSuelo;      }
-bool  Personaje::isBoostActivo()   const { return boostActivo;  }
-bool  Personaje::isDeslizando()    const { return deslizando;   }
-float Personaje::getFactorSigilo() const { return factorSigilo; }
+// ============================================================
+//  Getters
+// ============================================================
+int   Personaje::getVidas()        const { return vidas;       }
+float Personaje::getEnergia()      const { return energia;     }
+bool  Personaje::isEnSuelo()       const { return enSuelo;     }
+bool  Personaje::isBoostActivo()   const { return boostActivo; }
+bool  Personaje::isDeslizando()    const { return deslizando;  }
+float Personaje::getFactorSigilo() const { return factorSigilo;}

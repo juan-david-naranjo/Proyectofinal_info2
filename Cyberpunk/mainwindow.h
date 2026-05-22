@@ -24,25 +24,25 @@ public:
 protected:
     void keyPressEvent(QKeyEvent* event)   override;
     void keyReleaseEvent(QKeyEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
+    void resizeEvent(QResizeEvent* event)  override;
 
 private slots:
     void gameTick();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow* ui;
 
     Personaje*      jugador;
     QGraphicsScene* scena;
     QTimer*         timer;
-    QElapsedTimer   reloj;      // Para calcular dt real entre ticks
+    QElapsedTimer   reloj;
 
     Nivel_1*        nivel1;
     Nivel_2*        nivel2;
-    int             nivelActual;  // 1 o 2
+    int             nivelActual;
 
     static constexpr int FPS_OBJETIVO = 60;
-    static constexpr int MS_POR_TICK  = 1000 / FPS_OBJETIVO;  // ~16 ms
+    static constexpr int MS_POR_TICK  = 1000 / FPS_OBJETIVO;
 };
 
 #endif // MAINWINDOW_H
