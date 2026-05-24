@@ -12,8 +12,8 @@ Nivel_1::Nivel_1()
     : Nivel()
     , Escenario(nullptr)
     , puertaCerrada(false)
-    , spawnX(37.f)
-    , spawnY(1341.f)
+    , spawnX(370.f)
+    , spawnY(ESCENA_H - 180.f)
     , timerAcumulado(0.f)
     , escena(nullptr)
     , vista(nullptr)
@@ -141,20 +141,17 @@ void Nivel_1::generarPlataformas()
     limpiarPlataformas();
 
     // Suelo base
-    plataformas.push_back(new Plataforma(  13.f, 1414.f, 137.f, 18.f, false));
+    plataformas.push_back(new Plataforma(  0.f, 1390.f, 800.f, 30.f, false));
 
     // Fila 1 — zona baja
-    plataformas.push_back(new Plataforma( 252.f, 1357.f, 68.f, 12.f, false));
-    plataformas.push_back(new Plataforma(456.f, 1315.f, 116.f, 23.f, false));
-    plataformas.push_back(new Plataforma(358.f, 1260.f, 49.f, 20.f, false));
-
-    // Ventilador
-    plataformas.push_back(new Plataforma(359.f, 1343.f, 122.f, 73.f, false));
+    plataformas.push_back(new Plataforma( 40.f, 1280.f, 160.f, 18.f, false));
+    plataformas.push_back(new Plataforma(340.f, 1260.f, 140.f, 18.f, false));
+    plataformas.push_back(new Plataforma(570.f, 1290.f, 150.f, 18.f, false));
 
     // Fila 2
-    //plataformas.push_back(new Plataforma(150.f, 1170.f, 130.f, 18.f, true ));
-    //plataformas.push_back(new Plataforma(450.f, 1150.f, 120.f, 18.f, false));
-    //plataformas.push_back(new Plataforma( 20.f, 1130.f, 110.f, 18.f, false));
+    plataformas.push_back(new Plataforma(150.f, 1170.f, 130.f, 18.f, true ));
+    plataformas.push_back(new Plataforma(450.f, 1150.f, 120.f, 18.f, false));
+    plataformas.push_back(new Plataforma( 20.f, 1130.f, 110.f, 18.f, false));
 
     // Fila 3
     plataformas.push_back(new Plataforma(290.f, 1050.f, 140.f, 18.f, false));
@@ -389,8 +386,26 @@ void Nivel_1::actualizar(float dt)
 void Nivel_1::verificarCaida()
 {
     if (!jugador) return;
-    if (jugador->getY() > LIMITE_CAIDA)
+
+    float jy = jugador->getY();
+
+    // ── Caída de ≥4 plataformas → activar animación ──────────
+    // Diferencia de altura entre la Y más alta y la actual
+    // Cada plataforma ocupa ~120px de espacio vertical
+    static constexpr float ALTURA_4_PLATAFORMAS = 120.f * 4;  // 480px
+
+    float caida = jy - jugador->getYMasAlta();
+    bool caioMucho = (caida > ALTURA_4_PLATAFORMAS);
+
+    // Si cae al límite inferior del mapa
+    if (jy > LIMITE_CAIDA)
     {
+        if (caioMucho && !jugador->caidaFinalTerminada())
+        {
+            jugador->activarCaidaFinal();
+            return;   // esperar animación
+        }
+        // Sin caída grande, o animación terminada → respawn
         jugador->recibirDanio(1);
         jugador->resetearPosicion(spawnX, spawnY);
     }
