@@ -7,6 +7,11 @@
 #include <QPixmap>
 #include <QGraphicsScene>
 
+#include <QSoundEffect>
+#include <QUrl>
+#include <QMediaPlayer>
+#include <QAudioOutput>
+
 // ============================================================
 //  Nivel_2 — Vista cenital, laberinto + sigilo
 //
@@ -36,11 +41,6 @@ public:
     void inicializar(Personaje* p) override;
     void actualizar(float dt) override;
 
-    // void verificarDeteccion();   // Robot atrapa al jugador → daño
-    // void verificarVictoria();    // Jugador llega a la computadora
-
-
-
     // Getters de estado (para HUD externo)
     int   getTiempoRestante() const;
     bool  isCompletado()      const;
@@ -51,6 +51,30 @@ public:
     void setScene(QGraphicsScene* scene);
 
 private:
+
+    // ── Sonidos por evento ────────────────────────────────────────────────────
+    QSoundEffect sonidoDeteccion;   // robot entra en modo persecución
+    QSoundEffect sonidoHackeoLoop;  // loop mientras hackeas la computadora
+    QSoundEffect sonidoVictoria;    // hackeo completado
+
+
+    // ── Sonidos fondo ────────────────────────────────────────────────────
+    QMediaPlayer musicaFondo;
+    QAudioOutput audioFondo;
+
+    // ── Lógica del hackeo ─────────────────────────────────────────────────────
+    float tiempoHackeo     = 0.f;
+    float tiempoHackeoMax  = 3.f;   // segundos para completar (ajustable)
+    bool  haciendoHackeo   = false;
+
+    // ── Control de cambios de estado para el sonido de detección ─────────────
+    std::vector<EstadoAgente> estadosAnteriores;
+
+    // Cambiar firma de verificarVictoria para recibir dt:
+    void verificarVictoria(float dt);
+
+
+
     // Posición del objetivo (computadora a apagar)
     float objetivoX;
     float objetivoY;
@@ -84,7 +108,7 @@ private:
 
     void resolverColisiones();    ///< Jugador ↔ paredes
     void verificarDeteccion();    ///< Robot alcanza al jugador → daño + respawn
-    void verificarVictoria();     ///< Jugador llega a la computadora
+    // void verificarVictoria(float dt);     ///< Jugador llega a la computadora
 
     void agregarItemsEscena();    ///< Crea y añade todos los QGraphicsItem a la escena
     void actualizarCirculosDeteccion(); ///< Mueve y recolorea los círculos cada tick

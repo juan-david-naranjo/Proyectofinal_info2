@@ -71,6 +71,16 @@ public:
     // [NUEVO] — Asigna el ítem gráfico creado por el nivel en la escena
     void setItemGrafico(QGraphicsPixmapItem* item) { itemGrafico = item; }
 
+    QPixmap getPrimerFrame() const
+    {
+         if (!framesPatrullaje.isEmpty()) return framesPatrullaje.at(0);
+         return QPixmap();
+    }
+
+    void cargarSprites(const QPixmap& sheet);
+
+
+
     ~RobotSeguridad() override = default;
 
 private:
@@ -78,6 +88,19 @@ private:
     float radioDesenganche;
     float velPatrulla;
     float velPersecucion;
+
+    // Miembros privados nuevos (sección private)
+     QVector<QPixmap> framesPatrullaje;
+     QVector<QPixmap> framesAlert;
+     int   frameActual            = 0;
+     float tiempoFrame            = 0.f;
+     float duracionFramePatrullaje;
+     float duracionFrameAlert;
+
+
+
+
+
 
     // Waypoints de patrulla (aprendizaje: se añaden posiciones del jugador)
     std::vector<Punto2D> waypoints;

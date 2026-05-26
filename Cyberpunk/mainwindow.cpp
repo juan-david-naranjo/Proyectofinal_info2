@@ -9,7 +9,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , nivelActual(1)
+    , nivelActual(2)
 {
     ui->setupUi(this);
 
@@ -30,8 +30,8 @@ MainWindow::MainWindow(QWidget *parent)
     nivel2 = new Nivel_2();
 
     // ── Arrancar Nivel 1 ─────────────────────────────────────
-    nivel1->setScene(scena, ui->scene);
-    nivel1->inicializar(jugador);
+    nivel2->setScene(scena);
+    nivel2->inicializar(jugador);
 
     // ── Game loop ────────────────────────────────────────────
     timer = new QTimer(this);
@@ -77,7 +77,12 @@ void MainWindow::gameTick()
     }
     else if (nivelActual == 2)
     {
-        nivel2->actualizar(dt);
+         nivel2->actualizar(dt);
+        if (nivel2->completado)
+        {
+            timer->stop();           // pausar el game loop
+            mostrarPantallaVictoria();
+        }
     }
 
     scena->update();
@@ -152,4 +157,38 @@ void MainWindow::resizeEvent(QResizeEvent* event)
         nivel1->aplicarEscalaView();
     else
         ui->scene->fitInView(ui->scene->scene()->sceneRect(), Qt::KeepAspectRatio);
+}
+
+
+
+// ── Pantalla de victoria ──────────────────────────────────────────────────
+void MainWindow::mostrarPantallaVictoria()
+{
+    // Fondo semitransparente oscuro sobre toda la escena
+    QGraphicsRectItem* fondo = new QGraphicsRectItem(scena->sceneRect());
+    fondo->setBrush(QBrush(QColor(0, 0, 0, 170)));
+    fondo->setPen(Qt::NoPen);
+    fondo->setZValue(10.0);
+    scena->addItem(fondo);
+
+    // Texto principal
+    QGraphicsTextItem* titulo = new QGraphicsTextItem("HACKEO COMPLETADO");
+    titulo->setDefaultTextColor(QColor(0, 255, 120));
+    titulo->setFont(QFont("Consolas", 40, QFont::Bold));
+    // Centrar en la escena
+    QRectF tr = titulo->boundingRect();
+    titulo->setPos(scena->width()  * 0.5f - tr.width()  * 0.5f,
+                   scena->height() * 0.5f - tr.height());
+    titulo->setZValue(11.0);
+    scena->addItem(titulo);
+
+    // Subtítulo
+    QGraphicsTextItem* sub = new QGraphicsTextItem("Misión cumplida — Pulsa R para reiniciar");
+    sub->setDefaultTextColor(Qt::white);
+    sub->setFont(QFont("Consolas", 18));
+    QRectF sr = sub->boundingRect();
+    sub->setPos(scena->width()  * 0.5f - sr.width()  * 0.5f,
+                scena->height() * 0.5f + 10.f);
+    sub->setZValue(11.0);
+    scena->addItem(sub);
 }

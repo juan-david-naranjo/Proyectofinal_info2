@@ -8,8 +8,8 @@
 
 Nivel_2::Nivel_2()
     : Nivel()
-    , objetivoX(700.f)
-    , objetivoY(700.f)
+    , objetivoX(638.f)
+    , objetivoY(314.f)
     , objetivoRadio(40.f)
     , spawnX(50.f)
     , spawnY(50.f)
@@ -47,6 +47,28 @@ void Nivel_2::inicializar(Personaje* p)
     if (jugador)
         jugador->resetearPosicion(spawnX, spawnY);
 
+    // ── Cargar sonidos ────────────────────────────────────────────────────
+    // Ajusta las rutas según tus recursos (qrc o ruta local)
+    sonidoDeteccion.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_victoria.wav"));
+    sonidoDeteccion.setVolume(0.9f);
+
+    sonidoHackeoLoop.setSource(QUrl("qrc:/sonidoswav/Sonidos/Hacking.wav"));
+    sonidoHackeoLoop.setLoopCount(QSoundEffect::Infinite);  // loop mientras hackeas
+    sonidoHackeoLoop.setVolume(0.7f);
+
+    sonidoVictoria.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_victoria.wav"));
+    sonidoVictoria.setVolume(0.4f);
+
+    // ── Inicializar estados anteriores de los robots ──────────────────────
+    // Necesario para detectar el CAMBIO de estado (no el estado en sí)
+    estadosAnteriores.assign(robots.size(), EstadoAgente::PATRULLAJE);
+
+    musicaFondo.setAudioOutput(&audioFondo);
+    musicaFondo.setSource(QUrl("qrc:/Sonidos/Sonidos/sonido_fondo.mp3"));
+    audioFondo.setVolume(0.35f);       // suave para no tapar los efectos
+    musicaFondo.setLoops(QMediaPlayer::Infinite);
+    musicaFondo.play();
+
     if (escena)
         agregarItemsEscena();
 }
@@ -57,11 +79,11 @@ void Nivel_2::generarLaberinto()
 {
     limpiarPlataformas();
 
-    // ── Bordes del nivel (800 × 700) ──────────────────────────────────────
-    plataformas.push_back(new Plataforma(  0.f,   0.f, 800.f,  20.f)); // Techo
-    plataformas.push_back(new Plataforma(  0.f, 680.f, 800.f,  20.f)); // Suelo
+    // ── Bordes del nivel (1250 × 700) ──────────────────────────────────────
+    plataformas.push_back(new Plataforma(  0.f,   0.f, 1250.f,  20.f)); // Techo
+    plataformas.push_back(new Plataforma(  0.f, 620.f, 1250.f,  20.f)); // Suelo
     plataformas.push_back(new Plataforma(  0.f,   0.f,  20.f, 700.f)); // Pared izq
-    plataformas.push_back(new Plataforma(780.f,   0.f,  20.f, 700.f)); // Pared der
+    plataformas.push_back(new Plataforma(1250.f,   0.f,  20.f, 700.f)); // Pared der
 
     // ── Paredes internas del laberinto (vista cenital) ────────────────────
     // Estructura: {x, y, ancho, alto}
@@ -154,23 +176,22 @@ void Nivel_2::generarRobots()
 
 
 
+
 void Nivel_2::agregarItemsEscena()
 {
-    // ── 1. Paredes del laberinto ──────────────────────────────────────────
+    // ── 1. Paredes del laberinto ──────────────────────────────────────────────
     for (Plataforma* plat : plataformas)
     {
         Hitbox hb = plat->getHitbox();
-
         QGraphicsRectItem* rect = new QGraphicsRectItem(hb.x, hb.y, hb.w, hb.h);
-        rect->setBrush(QBrush(QColor(30, 50, 90, 230)));    // Azul-acero oscuro
+        rect->setBrush(QBrush(QColor(30, 50, 90, 230)));
         rect->setPen(QPen(QColor(70, 110, 180, 200), 1));
         rect->setZValue(1.0);
         escena->addItem(rect);
         itemsParedes.append(rect);
     }
 
-    // ── 2. Objetivo: computadora (círculo verde pulsante) ─────────────────
-    // Área de activación
+    // ── 2. Objetivo: la computadora ───────────────────────────────────────────
     itemObjetivo = new QGraphicsEllipseItem(
         objetivoX - objetivoRadio, objetivoY - objetivoRadio,
         objetivoRadio * 2.f, objetivoRadio * 2.f);
@@ -179,7 +200,6 @@ void Nivel_2::agregarItemsEscena()
     itemObjetivo->setZValue(2.0);
     escena->addItem(itemObjetivo);
 
-    // Icono "pantalla" de la computadora
     const float iconW = 36.f, iconH = 28.f;
     QGraphicsRectItem* pantalla = new QGraphicsRectItem(
         objetivoX - iconW * 0.5f, objetivoY - iconH * 0.5f - 4.f,
@@ -189,34 +209,54 @@ void Nivel_2::agregarItemsEscena()
     pantalla->setZValue(2.1);
     escena->addItem(pantalla);
 
-    // Píe del monitor
-    QGraphicsRectItem* pie = new QGraphicsRectItem(
-        objetivoX - 6.f, objetivoY + iconH * 0.5f - 4.f,
-        12.f, 10.f);
-    pie->setBrush(QBrush(QColor(0, 160, 60)));
-    pie->setPen(Qt::NoPen);
-    pie->setZValue(2.1);
-    escena->addItem(pie);
+    // ── 3. Robots de seguridad ────────────────────────────────────────────────
+    //
+    //  Se carga la hoja de sprites UNA SOLA VEZ y se pasa a cada robot.
+    //  Si los sprites del robot están en una hoja distinta a la del personaje,
+    //  cambia la ruta en QPixmap robotSheet("...").
+    //
+    //  RUTA ACTUAL: misma hoja que el personaje.
+    //  Ajusta si tus robots tienen su propio archivo.
+    // ─────────────────────────────────────────────────────────────────────────
+    QPixmap robotSheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
+    bool sheetOk = !robotSheet.isNull();
 
-    // ── 3. Robots de seguridad ─────────────────────────────────────────────
-    QPixmap robotPix = crearSpriteRobot(32, 32);
+    if (!sheetOk)
+        qDebug() << "WARN Nivel_2: no se pudo cargar la hoja de sprites de robots.";
 
-    for (int i = 0; i < (int)robots.size(); i++)
+    for (int i = 0; i < static_cast<int>(robots.size()); i++)
     {
         RobotSeguridad* robot = robots[i];
 
-        // — Sprite del robot —
-        QGraphicsPixmapItem* spriteItem = new QGraphicsPixmapItem(robotPix);
+        // ── Cargar sprites desde la hoja (llena framesPatrullaje y framesAlert)
+        if (sheetOk)
+            robot->cargarSprites(robotSheet);
+
+        // ── Crear el QGraphicsPixmapItem con el primer frame disponible ───────
+        QPixmap initPix = robot->getPrimerFrame();   // getter añadido a robotseguridad.h
+
+        if (initPix.isNull())
+        {
+            // Fallback: cuadrado rojo si la hoja no cargó
+            initPix = QPixmap(32, 32);
+            initPix.fill(QColor(180, 30, 30));
+        }
+
+        QGraphicsPixmapItem* spriteItem = new QGraphicsPixmapItem(initPix);
+        spriteItem->setTransformOriginPoint(initPix.width()  / 2.0,
+                                            initPix.height() / 2.0);
         spriteItem->setPos(robot->getX(), robot->getY());
         spriteItem->setZValue(3.0);
         escena->addItem(spriteItem);
-        robot->setItemGrafico(spriteItem);   // El robot moverá este ítem en actuar()
 
-        // — Círculo de detección visual —
+        // Asignar el ítem al robot para que actuar() lo mueva y anime
+        robot->setItemGrafico(spriteItem);
+
+        // ── Círculo de detección visual ────────────────────────────────────────
         float rd = robot->getRadioDeteccion();
         QGraphicsEllipseItem* circulo = new QGraphicsEllipseItem(
-            robot->getX() + 16.f - rd,
-            robot->getY() + 16.f - rd,
+            robot->getX() + initPix.width()  * 0.5f - rd,
+            robot->getY() + initPix.height() * 0.5f - rd,
             rd * 2.f, rd * 2.f);
         circulo->setBrush(QBrush(QColor(255, 60, 60, 25)));
         circulo->setPen(QPen(QColor(255, 60, 60, 100), 1, Qt::DashLine));
@@ -225,13 +265,19 @@ void Nivel_2::agregarItemsEscena()
         itemsDeteccion.append(circulo);
     }
 
-    // ── 4. Personaje (se añade encima de todo) ────────────────────────────
+    // ── 4. Personaje (encima de todo) ─────────────────────────────────────────
     if (jugador && jugador->getItem())
     {
         jugador->getItem()->setZValue(4.0);
         escena->addItem(jugador->getItem());
     }
 }
+
+
+
+
+
+
 
 
 
@@ -393,7 +439,7 @@ void Nivel_2::actualizar(float dt)
 
     // ── Comprobar condiciones de fin ──────────────────────────────────────
     verificarDeteccion();
-    verificarVictoria();
+    verificarVictoria(dt);
 }
 
 
@@ -436,36 +482,105 @@ void Nivel_2::actualizar(float dt)
 // ── Detección: si un robot toca al jugador → daño + respawn ──────────────────
 void Nivel_2::verificarDeteccion()
 {
+    // if (!jugador) return;
+
+    // float jx = jugador->getX() + jugador->getAncho() * 0.5f;
+    // float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
+
+    // for (RobotSeguridad* robot : robots)
+    // {
+    //     // Colisión entre el centro del robot y el centro del jugador
+    //     if (GestorFisicas::colisionCirculo(
+    //             robot->getX() + 16.f, robot->getY() + 16.f,
+    //             jx, jy,
+    //             30.f))   // radio de contacto
+    //     {
+    //         jugador->recibirDanio(1);
+    //         jugador->resetearPosicion(spawnX, spawnY);
+    //         break;  // Un solo impacto por tick
+    //     }
+    // }
     if (!jugador) return;
 
+    // ── Detectar CAMBIO de estado PATRULLAJE → PERSECUCION ────────────────
+    // Se compara el estado actual con el del tick anterior.
+    // Así el sonido suena UNA sola vez al detectar, no cada frame.
+    for (int i = 0; i < static_cast<int>(robots.size()); i++)
+    {
+        EstadoAgente estadoActual = robots[i]->getEstado();
+
+        if (estadosAnteriores[i] == EstadoAgente::PATRULLAJE &&
+            estadoActual          == EstadoAgente::PERSECUCION)
+        {
+            sonidoDeteccion.play();   // ¡Robot te vio!
+        }
+
+        estadosAnteriores[i] = estadoActual;  // actualizar para el próximo tick
+    }
+
+    // ── Colisión robot → jugador : daño + respawn ─────────────────────────
     float jx = jugador->getX() + jugador->getAncho() * 0.5f;
     float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
 
     for (RobotSeguridad* robot : robots)
     {
-        // Colisión entre el centro del robot y el centro del jugador
         if (GestorFisicas::colisionCirculo(
                 robot->getX() + 16.f, robot->getY() + 16.f,
-                jx, jy,
-                30.f))   // radio de contacto
+                jx, jy, 30.f))
         {
             jugador->recibirDanio(1);
             jugador->resetearPosicion(spawnX, spawnY);
-            break;  // Un solo impacto por tick
+
+            // Si te atrapan mientras hackeabas, el progreso se pierde
+            tiempoHackeo  = 0.f;
+            haciendoHackeo = false;
+            sonidoHackeoLoop.stop();
+
+            break;
         }
     }
 }
 
 // ── Victoria: jugador llega a la computadora ──────────────────────────────────
-void Nivel_2::verificarVictoria()
-{
-    if (!jugador) return;
+void Nivel_2::verificarVictoria(float dt)
+{ if (!jugador) return;
 
     float jx = jugador->getX() + jugador->getAncho() * 0.5f;
     float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
 
-    if (GestorFisicas::colisionCirculo(jx, jy, objetivoX, objetivoY, objetivoRadio))
-        completado = true;
+    bool cercaDeComputadora = GestorFisicas::colisionCirculo(
+        jx, jy, objetivoX, objetivoY, objetivoRadio);
+
+    if (cercaDeComputadora)
+    {
+        // Primera vez que entra al radio → arrancar sonido de hackeo
+        if (!haciendoHackeo)
+        {
+            haciendoHackeo = true;
+            sonidoHackeoLoop.play();
+        }
+
+        tiempoHackeo += dt;
+
+        // ── Hackeo completado ─────────────────────────────────────────────
+        if (tiempoHackeo >= tiempoHackeoMax)
+        {
+             musicaFondo.stop();
+            sonidoHackeoLoop.stop();
+            sonidoVictoria.play();
+            completado = true;
+        }
+    }
+    else
+    {
+        // El jugador se alejó antes de terminar → reiniciar progreso
+        if (haciendoHackeo)
+        {
+            tiempoHackeo   = 0.f;
+            haciendoHackeo = false;
+            sonidoHackeoLoop.stop();
+        }
+    }
 }
 
 

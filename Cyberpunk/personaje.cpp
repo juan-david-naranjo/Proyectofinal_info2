@@ -43,19 +43,42 @@ Personaje::Personaje(float X, float Y) : Personaje()
 
     itemGrafico = new QGraphicsPixmapItem();
 
-    // Intentar cargar sprites nivel 1; si falla, placeholder rojo
-    cargarSpritesNivel1();
+   //  // Intentar cargar sprites nivel 1; si falla, placeholder rojo
+   //  cargarSpritesNivel1();
 
-    if (n1_framesIdle.isEmpty())
-    {
-        QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
-        ph.fill(QColor(255, 80, 80));
-        itemGrafico->setPixmap(ph);
-    }
-    else
-    {
-        itemGrafico->setPixmap(n1_framesIdle[0]);
-    }
+
+
+
+
+   //  if (n1_framesIdle.isEmpty())
+   //  {
+   //      QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
+   //      ph.fill(QColor(255, 80, 80));
+   //      itemGrafico->setPixmap(ph);
+   //  }
+   //  else
+   //  {
+   //      itemGrafico->setPixmap(n1_framesIdle[0]);
+   //  }
+
+
+    //intentar caragr sprites para el nivel 2
+
+    cargarSpritesNivel2();
+
+
+     if (framesIdle.isEmpty())
+     {
+         QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
+         ph.fill(QColor(255, 80, 80));
+         itemGrafico->setPixmap(ph);
+     }
+     else
+     {
+         itemGrafico->setPixmap(framesIdle[0]);
+     }
+
+
 
     itemGrafico->setPos(x, y);
 }
@@ -298,6 +321,18 @@ void Personaje::actualizarNivel2(float dt)
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 // ============================================================
 //  tickAnimacion  — avanza frame y aplica al item gráfico
 // ============================================================
@@ -439,43 +474,78 @@ void Personaje::cargarSpritesNivel1()
 // ============================================================
 void Personaje::cargarSpritesNivel2()
 {
-    QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
-    if (sheet.isNull()) {
-        qDebug() << "ERROR Nivel2: No se pudo cargar sprites nivel 2 kael.png";
+    // QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
+    QPixmap sheet (":/Kael_nivel2/Sprites/Nivel2/Sprites_kael_movimientos.png");
+    if (sheet.isNull())
+    {
+        qDebug() << "ERROR: No se pudo cargar la hoja de sprites.";
         return;
     }
 
-    const int FW = 70;
-    const int FH = 70;
-    QColor fondoColor(0x31, 0x4d, 0x58);
-    int    tolerancia = 5;
+    const int frameW = 70;
+    const int frameH = 70;
 
-    auto recortar = [&](QVector<QPixmap>& dest, int ox, int oy, int nFrames)
+    // ── Lambda: recorta N frames y elimina AMBOS colores de fondo ────────────
+    //
+    //  Fondo 1 → #314d58  (animaciones idle / corriendo / boost)
+    //  Fondo 2 → #0e1527  (animación deslizando)
+    //
+    //  Se aplican en cadena: un pixel sólo necesita coincidir con UNO de los dos
+    //  fondos para volverse transparente, así se limpia toda la hoja por igual.
+    // ─────────────────────────────────────────────────────────────────────────
+    auto recortar = [&](QVector<QPixmap>& destino, int ox, int oy, int numFrames)
     {
-        dest.clear();
-        for (int i = 0; i < nFrames; ++i)
+        destino.clear();
+        for (int i = 0; i < numFrames; i++)
         {
-            int sx = ox + i * (FW + 8);
-            if (sx + FW <= sheet.width() && oy + FH <= sheet.height())
-                dest.append(eliminarFondo(sheet.copy(sx, oy, FW, FH), fondoColor, tolerancia));
+            int xFinal = ox + i * (frameW + 8);   // 8 px de separación entre frames
+
+            QPixmap frame;
+            if (xFinal + frameW <= sheet.width() && oy + frameH <= sheet.height())
+            {
+                frame = sheet.copy(xFinal, oy, frameW, frameH);
+            }
             else
             {
-                QPixmap ph(FW, FH); ph.fill(Qt::transparent);
-                dest.append(ph);
+                qDebug() << "WARN: frame" << i << "fuera de la imagen";
+                frame = QPixmap(frameW, frameH);
+                frame.fill(Qt::transparent);
+                destino.append(frame);
+                continue;
             }
+
+            // ── Eliminar fondo normal (#314d58) ──────────────────────────────
+            frame = eliminarFondo(frame, QColor(0x31, 0x4d, 0x58), 8);
+            // ── Eliminar fondo desliz (#0e1527) ──────────────────────────────
+            frame = eliminarFondo(frame, QColor(0x0e, 0x15, 0x27), 8);
+
+            destino.append(frame);
         }
     };
 
-    recortar(framesIdle,       40,  136, 5);
-    recortar(framesCorriendo,  40,  136, 5);
-    recortar(framesDeslizando, 53,  335, 5);
-    recortar(framesBoost,      450, 331, 2);
+    //             destino           origenX  origenY  numFrames
+    recortar(framesIdle,         40,   140,    4);
+    recortar(framesCorriendo,    40,   336,    8);   // ajusta origenX/Y si están en otra fila
+    recortar(framesDeslizando,   40,   515,    4);
+    recortar(framesBoost,       450,   331,    2);
 
+    // ── Estado inicial ────────────────────────────────────────────────────────
     estadoAnim    = EstadoAnim::IDLE;
     frameActual   = 0;
     tiempoFrame   = 0.f;
     duracionFrame = 0.1f;
     miraDerecha   = true;
+
+    // ── Aplicar primer frame y fijar el pivote de rotación en el centro ──────
+    // Imprescindible para que la rotación en actualizarNivel2 gire alrededor
+    // del centro del sprite en vez de la esquina superior-izquierda.
+    if (itemGrafico)
+    {
+        if (!framesIdle.isEmpty())
+            itemGrafico->setPixmap(framesIdle.at(0));
+
+        itemGrafico->setTransformOriginPoint(frameW / 2.0, frameH / 2.0);
+    }
 }
 
 // ============================================================

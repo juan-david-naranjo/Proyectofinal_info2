@@ -43,6 +43,7 @@ private:
 
     static constexpr int FPS_OBJETIVO = 60;
     static constexpr int MS_POR_TICK  = 1000 / FPS_OBJETIVO;
+    void mostrarPantallaVictoria();
 };
 
 #endif // MAINWINDOW_H
