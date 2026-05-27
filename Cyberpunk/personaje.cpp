@@ -558,22 +558,22 @@ void Personaje::cargarSpritesNivel1()
     // Grupo 7: x=462  w=89  → doble salto flash (dividir en 2x44)
     // Grupo 8: x=552  w=43  → post doble salto
     // Grupo 9: x=605  w=39  → aterrizaje
-    n1_framesSaltando.clear();
-    n1_framesSaltando.append(extraer( 18, 110, 38, 98));  // prep
-    n1_framesSaltando.append(extraer( 70, 110, 57, 98));  // arco f1
-    n1_framesSaltando.append(extraer(127, 110, 58, 98));  // arco f2
-    n1_framesSaltando.append(extraer(185, 110, 58, 98));  // arco f3
-    n1_framesSaltando.append(extraer(251, 110, 40, 98));  // apex
-    n1_framesSaltando.append(extraer(322, 110, 33, 98));  // caída f1
-    n1_framesSaltando.append(extraer(371, 110, 34, 98));  // caída f2
-    n1_framesSaltando.append(extraer(418, 110, 38, 98));  // caída f3
-    n1_framesSaltando.append(extraer(462, 110, 44, 98));  // doble f1
-    n1_framesSaltando.append(extraer(506, 110, 45, 98));  // doble f2
-    n1_framesSaltando.append(extraer(552, 110, 43, 98));  // post
-    n1_framesSaltando.append(extraer(605, 110, 39, 98));  // aterrizaje
+    // n1_framesSaltando.clear();
+    // n1_framesSaltando.append(extraer( 18, 110, 38, 98));  // prep
+    // n1_framesSaltando.append(extraer( 70, 110, 57, 98));  // arco f1
+    // n1_framesSaltando.append(extraer(127, 110, 58, 98));  // arco f2
+    // n1_framesSaltando.append(extraer(185, 110, 58, 98));  // arco f3
+    // n1_framesSaltando.append(extraer(251, 110, 40, 98));  // apex
+    // n1_framesSaltando.append(extraer(322, 110, 33, 98));  // caída f1
+    // n1_framesSaltando.append(extraer(371, 110, 34, 98));  // caída f2
+    // n1_framesSaltando.append(extraer(418, 110, 38, 98));  // caída f3
+    // n1_framesSaltando.append(extraer(462, 110, 44, 98));  // doble f1
+    // n1_framesSaltando.append(extraer(506, 110, 45, 98));  // doble f2
+    // n1_framesSaltando.append(extraer(552, 110, 43, 98));  // post
+    // n1_framesSaltando.append(extraer(605, 110, 39, 98));  // aterrizaje
 
     // ── FILA 3 (y=214 h=66): VIENTO — OMITIDA ────────────────
-    n1_framesVientoCalda.clear();  // vacío hasta implementar ventilador
+    //n1_framesVientoCalda.clear();  // vacío hasta implementar ventilador
 
     // ── FILA 4 (y=294 h=59): CAÍDA FINAL ─────────────────────
     // Solo los 3 primeros grupos son del personaje.
@@ -581,10 +581,10 @@ void Personaje::cargarSpritesNivel1()
     // Grupo 1: x=18  w=60
     // Grupo 2: x=96  w=60
     // Grupo 3: x=180 w=67
-    n1_framesCaidaFinal.clear();
-    n1_framesCaidaFinal.append(extraer( 18, 294, 60, 59));
-    n1_framesCaidaFinal.append(extraer( 96, 294, 60, 59));
-    n1_framesCaidaFinal.append(extraer(180, 294, 67, 59));
+    // n1_framesCaidaFinal.clear();
+    // n1_framesCaidaFinal.append(extraer( 18, 294, 60, 59));
+    // n1_framesCaidaFinal.append(extraer( 96, 294, 60, 59));
+    // n1_framesCaidaFinal.append(extraer(180, 294, 67, 59));
 
     // ── Estado inicial ─────────────────────────────────────────
     estadoAnim    = EstadoAnim::IDLE;
@@ -593,11 +593,11 @@ void Personaje::cargarSpritesNivel1()
     duracionFrame = 0.09f;
     miraDerecha   = true;
 
-    qDebug() << "N1 OK:"
-             << "Idle:"       << n1_framesIdle.size()
-             << "Correr:"     << n1_framesCorriendo.size()
-             << "Salto:"      << n1_framesSaltando.size()
-             << "CaidaFinal:" << n1_framesCaidaFinal.size();
+    // qDebug() << "N1 OK:"
+    //          << "Idle:"       << n1_framesIdle.size()
+    //          << "Correr:"     << n1_framesCorriendo.size()
+    //          << "Salto:"      << n1_framesSaltando.size()
+    //          << "CaidaFinal:" << n1_framesCaidaFinal.size();
 }
 
 // ============================================================
@@ -646,10 +646,10 @@ void Personaje::cargarSpritesNivel2()
 
     //            destino           ox   oy   frames  fw   fh   sep
     recortar(framesIdle,            42, 140,    4,    93, 109,  10);
-    recortar(framesCorriendo,       41, 337,    8,    73,  86,  11);
+    recortar(framesCorriendo,       45, 338,    8,    66,  86,  15);
     recortar(framesDeslizando,      41, 516,    4,    89, 97,  10);
     // recortar(framesBoost,          450, 331,    2,    93, 109,  10);
-    recortar(framesUprun,      722, 313,    9,    65, 111,  9);             //la espalda del personaje
+    recortar(framesUprun,      725, 314,    9,    60, 105,  12);             //la espalda del personaje
     recortar(framesDownrun,         320, 331,    2,    93, 109,  10);      //el frente del personaje, otro datasheet
 
 
