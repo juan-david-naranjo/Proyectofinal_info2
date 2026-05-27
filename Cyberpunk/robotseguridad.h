@@ -51,11 +51,15 @@ public:
 
     // ── Ciclo del agente ─────────────────────────────────────
     void percibir(float jugadorX, float jugadorY) override;
-    void razonar()  override;
+    void razonar()  override{ razonar(false);}
+    void razonar(bool jugadorOculto = false) ;
     void actuar(float dt) override;
 
     // Método completo que el nivel llama cada tick
-    void tick(float jugadorX, float jugadorY, float dt);
+    // void tick(float jugadorX, float jugadorY, float dt);
+
+    void tick(float jx, float jy, float dt, bool jugadorOculto = false);
+
 
     // Actualiza lista de waypoints con la última posición vista
     void actualizarWaypoints();

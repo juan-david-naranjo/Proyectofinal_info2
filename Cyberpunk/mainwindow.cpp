@@ -118,7 +118,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         break;
 
     case Qt::Key_Shift:
-        if (nivelActual == 2) jugador->activarDesliz();
+        if (nivelActual == 2) jugador->activarDeslizNivel2();
         break;
 
     default: break;

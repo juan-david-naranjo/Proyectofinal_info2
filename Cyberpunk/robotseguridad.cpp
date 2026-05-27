@@ -168,33 +168,66 @@ float RobotSeguridad::calcularDistancia() const
 
 // ── RAZONAR ──────────────────────────────────────────────────────────────────
 // Evalúa el estado actual y decide la transición.
-void RobotSeguridad::razonar()
+// void RobotSeguridad::razonar()
+// {
+//     switch (estado)
+//     {
+//     case EstadoAgente::PATRULLAJE:
+//         // Transición a PERSECUCION si el jugador entra en el radio
+//         if (GestorFisicas::colisionCirculo(x, y,
+//                                            jugadorPosX, jugadorPosY,
+//                                            radioDeteccion))
+//         {
+//             estado = EstadoAgente::PERSECUCION;
+//             tiempoPersecucion = 0.f;
+//             // Guardar posición en historial (aprendizaje)
+//             actualizarWaypoints();
+//         }
+//         break;
+
+//     case EstadoAgente::PERSECUCION:
+//         // Solo puede volver a patrullaje si pasó el tiempo mínimo Y
+//         // el jugador salió del radio de desenganche
+//         if (tiempoPersecucion >= DURACION_MIN_PERSECUCION &&
+//             !GestorFisicas::colisionCirculo(x, y,
+//                                             jugadorPosX, jugadorPosY,
+//                                             radioDesenganche))
+//         {
+//             estado = EstadoAgente::PATRULLAJE;
+//             // El próximo waypoint será la última posición guardada
+//         }
+//         break;
+//     }
+// }
+
+
+void RobotSeguridad::razonar(bool jugadorOculto)
 {
+     qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
     switch (estado)
     {
     case EstadoAgente::PATRULLAJE:
-        // Transición a PERSECUCION si el jugador entra en el radio
-        if (GestorFisicas::colisionCirculo(x, y,
+        // Si el jugador está oculto, el robot no puede detectarlo
+        if (!jugadorOculto &&
+            GestorFisicas::colisionCirculo(x, y,
                                            jugadorPosX, jugadorPosY,
                                            radioDeteccion))
         {
             estado = EstadoAgente::PERSECUCION;
             tiempoPersecucion = 0.f;
-            // Guardar posición en historial (aprendizaje)
             actualizarWaypoints();
         }
         break;
 
     case EstadoAgente::PERSECUCION:
-        // Solo puede volver a patrullaje si pasó el tiempo mínimo Y
-        // el jugador salió del radio de desenganche
+
+        // Desenganche normal por distancia
         if (tiempoPersecucion >= DURACION_MIN_PERSECUCION &&
             !GestorFisicas::colisionCirculo(x, y,
                                             jugadorPosX, jugadorPosY,
                                             radioDesenganche))
         {
             estado = EstadoAgente::PATRULLAJE;
-            // El próximo waypoint será la última posición guardada
         }
         break;
     }
@@ -248,12 +281,20 @@ void RobotSeguridad::actuar(float dt)
 }
 
 // ── TICK (método completo para el nivel) ─────────────────────────────────────
-void RobotSeguridad::tick(float jx, float jy, float dt)
+// void RobotSeguridad::tick(float jx, float jy, float dt)
+// {
+//     percibir(jx, jy);
+//     razonar();
+//     actuar(dt);
+// }
+
+void RobotSeguridad::tick(float jx, float jy, float dt, bool jugadorOculto)
 {
     percibir(jx, jy);
-    razonar();
+    razonar(jugadorOculto);
     actuar(dt);
 }
+
 
 // ── APRENDIZAJE: actualizar waypoints ────────────────────────────────────────
 // Añade la última posición vista del jugador al patrón de vigilancia.

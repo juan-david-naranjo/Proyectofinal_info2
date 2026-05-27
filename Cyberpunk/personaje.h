@@ -7,6 +7,9 @@
 #include <QDebug>
 #include <QString>
 
+
+#include <QPainter>
+
 // ============================================================
 //  Personaje — Kael
 //
@@ -37,6 +40,7 @@ public:
     void saltar();
     void activarBoost();
     void activarDesliz();
+    void activarDeslizNivel2();
 
     // ── Actualización ─────────────────────────────────────────
     void actualizar(float dt) override;
@@ -87,7 +91,11 @@ private:
     QVector<QPixmap> framesIdle;
     QVector<QPixmap> framesCorriendo;
     QVector<QPixmap> framesDeslizando;
-    QVector<QPixmap> framesBoost;
+    // QVector<QPixmap> framesBoost;
+    QVector<QPixmap> framesUprun;
+    QVector<QPixmap> framesDownrun;
+
+
 
     // ── Estado de animación ───────────────────────────────────
     // Estados compartidos; el nivel activo decide cuáles usar
@@ -101,6 +109,8 @@ private:
         VIENTO_CAIDA,
         COLISION,
         // Nivel 2
+        CORRIENDO_ARRIBA,
+        CORRIENDO_ABAJO,
         DESLIZANDO,
         BOOST
     };
@@ -145,7 +155,11 @@ private:
 
     // ── Helpers internos ─────────────────────────────────────
     // Avanza la animación y aplica el frame al itemGrafico
-    void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop = true);
+    // void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop = true);
+
+    // personaje.h — actualizar la firma:
+    void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop,
+                       float multVelocidad = 1.0f);  // 1.0 = normal, >1 = más lento
 };
 
 #endif // PERSONAJE_H

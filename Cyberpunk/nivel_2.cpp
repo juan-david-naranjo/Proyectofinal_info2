@@ -18,7 +18,8 @@ Nivel_2::Nivel_2()
     ,itemObjetivo(nullptr)
 {
     tiempoRestante = 180; // 3 minutos
-    Escenario= new QPixmap(":/Kael_nivel2/Sprites/Nivel2/Escenario2.png");
+    Escenario= new QPixmap(":/Kael_nivel2/Sprites/Nivel2/Escenario_V2.png");
+
     // Escenario->scaled(1250,660);
 }
 
@@ -42,19 +43,19 @@ void Nivel_2::inicializar(Personaje* p)
     jugador = p;
 
     generarLaberinto();
-    generarRobots();
+    // generarRobots();
 
     if (jugador)
         jugador->resetearPosicion(spawnX, spawnY);
 
     // ── Cargar sonidos ────────────────────────────────────────────────────
     // Ajusta las rutas según tus recursos (qrc o ruta local)
-    sonidoDeteccion.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_victoria.wav"));
+    sonidoDeteccion.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_persecusion_wav.wav"));
     sonidoDeteccion.setVolume(0.9f);
 
     sonidoHackeoLoop.setSource(QUrl("qrc:/sonidoswav/Sonidos/Hacking.wav"));
     sonidoHackeoLoop.setLoopCount(QSoundEffect::Infinite);  // loop mientras hackeas
-    sonidoHackeoLoop.setVolume(0.7f);
+    sonidoHackeoLoop.setVolume(0.5f);
 
     sonidoVictoria.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_victoria.wav"));
     sonidoVictoria.setVolume(0.4f);
@@ -79,53 +80,80 @@ void Nivel_2::generarLaberinto()
 {
     limpiarPlataformas();
 
+
+
+
     // ── Bordes del nivel (1250 × 700) ──────────────────────────────────────
-    plataformas.push_back(new Plataforma(  0.f,   0.f, 1250.f,  20.f)); // Techo
-    plataformas.push_back(new Plataforma(  0.f, 620.f, 1250.f,  20.f)); // Suelo
-    plataformas.push_back(new Plataforma(  0.f,   0.f,  20.f, 700.f)); // Pared izq
-    plataformas.push_back(new Plataforma(1250.f,   0.f,  20.f, 700.f)); // Pared der
+    plataformas.push_back(new Plataforma(  20.f,   0.f, 1295.f,  14.f)); // Techo
+    plataformas.push_back(new Plataforma(  20.f, 815.f, 1295.f,  14.f)); // Suelo
+    plataformas.push_back(new Plataforma(  0.f,   0.f,  16.f, 815.f)); // Pared izq
+    plataformas.push_back(new Plataforma(1295.f,   0.f,  20.f, 815.f)); // Pared der
 
     // ── Paredes internas del laberinto (vista cenital) ────────────────────
     // Estructura: {x, y, ancho, alto}
     struct Wall { float x, y, w, h; };
     static const Wall paredes[] =
         {
-         // ── Corredor vertical izquierdo ──
-         { 100.f,  20.f,  20.f, 200.f },
-         { 100.f, 320.f,  20.f, 160.f },
-         { 100.f, 580.f,  20.f, 100.f },
+         //----- pared(H) superior derecho-------
+         { 292.f,  202.f,  1003.f, 15.f },
 
-         // ── Corredor horizontal superior ──
-         { 100.f,  20.f, 300.f,  20.f },
-         { 500.f,  20.f, 280.f,  20.f },
 
-         // ── Divisiones centrales ──
-         { 200.f, 200.f,  20.f, 200.f },
-         { 300.f, 300.f, 200.f,  20.f },
+        //----- pared(H) superior izquierdo------
+        { 16.f, 236.f,  189.f, 16.f },
 
-         // ── Sector 3 ──
-         { 400.f,  20.f,  20.f, 280.f },
-         { 500.f, 180.f,  20.f, 240.f },
-         { 400.f, 480.f, 200.f,  20.f },
 
-         // ── Sector 4 ──
-         { 600.f,  20.f,  20.f, 160.f },
-         { 540.f, 380.f, 240.f,  20.f },
-         { 600.f, 480.f,  20.f, 200.f },
+        //---- pared(V) que conecta con el corredor superior derecho---
+         { 292.f, 202.f,  20.f, 403.f },
 
-         // ── Corredor horizontal inferior ──
-         { 120.f, 580.f, 280.f,  20.f },
-         { 500.f, 580.f, 280.f,  20.f },
 
-         // ── Bloques de cobertura (el jugador puede esconderse) ──
-         { 160.f, 140.f,  60.f,  60.f },
-         { 350.f, 120.f,  60.f,  60.f },
-         { 460.f, 320.f,  60.f,  60.f },
-         { 650.f, 560.f,  60.f,  60.f },
-         };
+        //---- paredes(H) horizontal inferior que conecta con la pared
+
+         { 312.f,  586.f, 334.f,  20.f },
+         { 771.f,  586.f, 524.f,  20.f },
+
+         // ---- laberinto central-----
+         { 771.f, 486.f,  20.f, 100.f },
+         { 451.f, 430.f, 320.f,  20.f },
+
+         // // ── Sector 3 ──
+         // { 400.f,  20.f,  20.f, 280.f },
+         // { 500.f, 180.f,  20.f, 240.f },
+         // { 400.f, 480.f, 200.f,  20.f },
+
+         // // ── Sector 4 ──
+         // { 600.f,  20.f,  20.f, 160.f },
+         // { 540.f, 380.f, 240.f,  20.f },
+         // { 600.f, 480.f,  20.f, 200.f },
+
+         // // ── Corredor horizontal inferior ──
+         // { 120.f, 580.f, 280.f,  20.f },
+         // { 500.f, 580.f, 280.f,  20.f },
+
+         // // ── Bloques de cobertura (el jugador puede esconderse) ──
+         // { 160.f, 140.f,  60.f,  60.f },
+         // { 350.f, 120.f,  60.f,  60.f },
+         // { 460.f, 320.f,  60.f,  60.f },
+         // { 650.f, 560.f,  60.f,  60.f },
+          };
+
+    zonasOcultas = {
+                    { 20.f, 104.f, 200.f, 200.f },
+                    { 20.f, 680.f, 100.f, 100.f },
+                    // { 460.f, 320.f, 80.f, 80.f },
+                    // { 650.f, 560.f, 80.f, 80.f },
+                    };
 
     // for (const auto& w : paredes)
     //     plataformas.push_back(new Plataforma(w.x, w.y, w.w, w.h));
+
+    for (const auto& z : zonasOcultas)
+    {
+        auto* item = escena->addRect(z.x, z.y, z.w, z.h,
+                                     QPen(Qt::NoPen),
+                                     QBrush(QColor(0, 0, 0, 160))); // negro semitransparente
+        item->setZValue(1);   // encima del suelo, debajo del personaje
+        itemsZonas.append(item);
+    }
 }
 
 // ── Generar robots ────────────────────────────────────────────────────────────
@@ -385,7 +413,38 @@ void Nivel_2::actualizarCirculosDeteccion()
 // ── Actualizar ────────────────────────────────────────────────────────────────
 void Nivel_2::actualizar(float dt)
 {
-    if (!jugador) return;
+
+    if (!jugador) return;   // ← mover este guard al inicio
+
+    bool oculto = jugadorEnSombra();
+
+    // ── Tick robots: centro del jugador + flag de sombra ─────────────────
+    float jx = jugador->getX() + jugador->getAncho() * 0.5f;
+    float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
+
+    for (int i = 0; i < (int)robots.size(); i++)
+    {
+        RobotSeguridad* robot = robots[i];
+        robot->tick(jx, jy, dt, oculto);   // ← un solo tick con todo
+
+        // Colisiones del robot con paredes
+        float rx  = robot->getX();
+        float ry  = robot->getY();
+        float rvx = robot->getVx();
+        float rvy = robot->getVy();
+        bool  dummy = false;
+
+        for (Plataforma* plat : plataformas)
+        {
+            Hitbox hbPlat = plat->getHitbox();
+            GestorFisicas::resolverColision(
+                rx, ry, 32.f, 32.f,
+                rvx, rvy, dummy,
+                hbPlat.x, hbPlat.y, hbPlat.w, hbPlat.h);
+        }
+        robot->setPosicion(rx, ry);
+        robot->setVelocidad(rvx, rvy);
+    };
 
     // ── Timer: usar acumulador para descontar segundos exactos ────────────
     // BUG ORIGINAL: (int)dt siempre es 0 a 60 fps (dt ≈ 0.016).
@@ -405,34 +464,6 @@ void Nivel_2::actualizar(float dt)
     // ── Resolver colisiones del jugador con las paredes ───────────────────
     resolverColisiones();
 
-    // ── Tick de cada robot: percibir → razonar → actuar ──────────────────
-    // Se pasa el centro del jugador (más preciso que la esquina)
-    float jx = jugador->getX() + jugador->getAncho() * 0.5f;
-    float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
-
-    for (int i = 0; i < (int)robots.size(); i++)
-    {
-        RobotSeguridad* robot = robots[i];
-        robot->tick(jx, jy, dt);
-
-        // Colisiones del robot con las paredes
-        float rx  = robot->getX();
-        float ry  = robot->getY();
-        float rvx = robot->getVx();
-        float rvy = robot->getVy();
-        bool  dummy = false;
-
-        for (Plataforma* plat : plataformas)
-        {
-            Hitbox hbPlat = plat->getHitbox();
-            GestorFisicas::resolverColision(
-                rx, ry, 32.f, 32.f,
-                rvx, rvy, dummy,
-                hbPlat.x, hbPlat.y, hbPlat.w, hbPlat.h);
-        }
-        robot->setPosicion(rx, ry);
-        robot->setVelocidad(rvx, rvy);
-    }
 
     // ── Actualizar círculos de detección en la escena ─────────────────────
     actualizarCirculosDeteccion();
@@ -449,32 +480,7 @@ void Nivel_2::actualizar(float dt)
 //  actualizarCirculosDeteccion  — mueve y recolorea los anillos de radar
 //  cada tick, reflejando el estado actual de cada robot (PATRULLAJE / PERSECUCION)
 // ════════════════════════════════════════════════════════════════════════════
-// void Nivel_2::actualizarCirculosDeteccion()
-// {
-//     for (int i = 0; i < (int)robots.size() && i < itemsDeteccion.size(); i++)
-//     {
-//         RobotSeguridad* robot  = robots[i];
-//         QGraphicsEllipseItem* circulo = itemsDeteccion[i];
 
-//         float rd = robot->getRadioDeteccion();
-//         float cx = robot->getX() + 16.f;   // Centro del sprite (32×32)
-//         float cy = robot->getY() + 16.f;
-
-//         circulo->setRect(cx - rd, cy - rd, rd * 2.f, rd * 2.f);
-
-//         // Rojo intenso cuando está persiguiendo; gris tenue en patrullaje
-//         if (robot->getEstado() == EstadoAgente::PERSECUCION)
-//         {
-//             circulo->setBrush(QBrush(QColor(255, 30, 30, 70)));
-//             circulo->setPen(QPen(QColor(255, 40, 40, 220), 2, Qt::SolidLine));
-//         }
-//         else
-//         {
-//             circulo->setBrush(QBrush(QColor(255, 60, 60, 25)));
-//             circulo->setPen(QPen(QColor(255, 60, 60, 100), 1, Qt::DashLine));
-//         }
-//     }
-// }
 
 
 
@@ -482,24 +488,6 @@ void Nivel_2::actualizar(float dt)
 // ── Detección: si un robot toca al jugador → daño + respawn ──────────────────
 void Nivel_2::verificarDeteccion()
 {
-    // if (!jugador) return;
-
-    // float jx = jugador->getX() + jugador->getAncho() * 0.5f;
-    // float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
-
-    // for (RobotSeguridad* robot : robots)
-    // {
-    //     // Colisión entre el centro del robot y el centro del jugador
-    //     if (GestorFisicas::colisionCirculo(
-    //             robot->getX() + 16.f, robot->getY() + 16.f,
-    //             jx, jy,
-    //             30.f))   // radio de contacto
-    //     {
-    //         jugador->recibirDanio(1);
-    //         jugador->resetearPosicion(spawnX, spawnY);
-    //         break;  // Un solo impacto por tick
-    //     }
-    // }
     if (!jugador) return;
 
     // ── Detectar CAMBIO de estado PATRULLAJE → PERSECUCION ────────────────
@@ -540,6 +528,23 @@ void Nivel_2::verificarDeteccion()
         }
     }
 }
+
+
+bool Nivel_2::jugadorEnSombra() const
+{
+    // Usar la posición base sin offset — más predecible
+    float px = jugador->getX();
+    float py = jugador->getY();
+
+    for (const auto& z : zonasOcultas)
+        if (px >= z.x && px <= z.x + z.w &&
+            py >= z.y && py <= z.y + z.h)
+            return true;
+
+    return false;
+}
+
+
 
 // ── Victoria: jugador llega a la computadora ──────────────────────────────────
 void Nivel_2::verificarVictoria(float dt)

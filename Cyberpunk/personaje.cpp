@@ -149,6 +149,24 @@ void Personaje::activarDesliz()
     }
 }
 
+
+void Personaje::activarDeslizNivel2()
+{
+    float velTotal = std::sqrt(Vx*Vx + Vy*Vy);
+    bool  estaCorreindo = velTotal > velMax * 0.3f;
+
+    if (estaCorreindo && !deslizando)
+    {
+        deslizando   = true;
+        tiempoDesliz = DURACION_DESLIZ_MAX;
+
+        // Impulso en la dirección actual de movimiento
+        float nx = Vx / velTotal;
+        float ny = Vy / velTotal;
+        Vx = nx * velMax * 1.5f;
+        Vy = ny * velMax * 1.5f;
+    }
+}
 // ============================================================
 //  actualizar genérico
 // ============================================================
@@ -258,6 +276,7 @@ void Personaje::actualizarNivel2(float dt)
 
     if (deslizando)
     {
+        //qDebug("deslizando");
         GestorFisicas::aplicarInercia(Vx, 0.f, dt);
         GestorFisicas::aplicarInercia(Vy, 0.f, dt);
         tiempoDesliz -= dt;
@@ -265,6 +284,7 @@ void Personaje::actualizarNivel2(float dt)
     }
     else
     {
+        //qDebug("no deslizando");
         float velObjetivoX = 0.f;
         if (keys[0]) { velObjetivoX = -velEfectiva; miraDerecha = false; }
         if (keys[1]) { velObjetivoX =  velEfectiva; miraDerecha = true;  }
@@ -284,39 +304,80 @@ void Personaje::actualizarNivel2(float dt)
 
     if (boostActivo)
     {
+        //qDebug("boost activado");
         tiempoBoost -= dt;
         if (tiempoBoost <= 0.f) { boostActivo = false; tiempoBoost = 0.f; }
     }
 
+
     // Animación nivel 2
+
     EstadoAnim nuevoEstado;
-    if (boostActivo)
-        nuevoEstado = EstadoAnim::BOOST;
-    else if (deslizando)
+
+    if (deslizando)
         nuevoEstado = EstadoAnim::DESLIZANDO;
-    else if (std::abs(Vx) > 10.f || std::abs(Vy) > 10.f)
-        nuevoEstado = EstadoAnim::CORRIENDO;
+    else if (velTotal > 10.f)
+    {
+        if (std::abs(Vy) > std::abs(Vx))
+        {
+            // Movimiento principalmente vertical
+            if (Vy < 0.f)
+                nuevoEstado = EstadoAnim::CORRIENDO_ARRIBA;
+            else
+                nuevoEstado = EstadoAnim::CORRIENDO_ABAJO;
+        }
+        else
+            nuevoEstado = EstadoAnim::CORRIENDO;  // horizontal dominante
+    }
     else
         nuevoEstado = EstadoAnim::IDLE;
 
-    if (nuevoEstado != estadoAnim)
+    if (nuevoEstado != estadoAnim)   // solo si realmente cambia
     {
-        estadoAnim  = nuevoEstado;
         frameActual = 0;
         tiempoFrame = 0.f;
     }
+    estadoAnim = nuevoEstado;
 
     QVector<QPixmap>* frames = nullptr;
+    float multAnim = 1.0f;
+
     switch (estadoAnim)
     {
-    case EstadoAnim::IDLE:       frames = &framesIdle;       break;
-    case EstadoAnim::CORRIENDO:  frames = &framesCorriendo;  break;
-    case EstadoAnim::DESLIZANDO: frames = &framesDeslizando; break;
-    case EstadoAnim::BOOST:      frames = &framesBoost;      break;
-    default:                     frames = &framesIdle;       break;
+    case EstadoAnim::IDLE:
+        frames = &framesIdle;
+        break;
+    case EstadoAnim::CORRIENDO:
+        frames = &framesCorriendo;
+        break;
+    case EstadoAnim::CORRIENDO_ARRIBA:
+        frames   = &framesUprun;
+        multAnim = boostActivo ? 0.4f : 0.7f;   // boost → aún más rápido
+        break;
+    case EstadoAnim::CORRIENDO_ABAJO:
+        frames   = &framesIdle;
+        multAnim = boostActivo ? 0.4f : 0.7f;
+        break;
+    case EstadoAnim::DESLIZANDO:
+        frames = &framesDeslizando;
+        break;
+    default:
+        frames = &framesIdle;
+        break;
     }
 
-    if (frames) tickAnimacion(dt, *frames, true);
+
+    // Calcular multiplicador: si va principalmente hacia arriba/abajo → más lento
+    // Así los mismos sprites de correr se ven diferente en movimiento vertical
+
+    if (velTotal > 10.f && std::abs(Vy) > std::abs(Vx))
+        multAnim = 1.8f;   // ~45% más lento — ajusta este valor a tu gusto
+
+
+
+
+    if (frames) tickAnimacion(dt, *frames, true, multAnim);
+
 
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
@@ -336,12 +397,41 @@ void Personaje::actualizarNivel2(float dt)
 // ============================================================
 //  tickAnimacion  — avanza frame y aplica al item gráfico
 // ============================================================
-void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
+// void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
+// {
+//     if (frames.isEmpty() || !itemGrafico) return;
+
+//     tiempoFrame += dt;
+//     if (tiempoFrame >= duracionFrame)
+//     {
+//         tiempoFrame = 0.f;
+//         if (loop)
+//             frameActual = (frameActual + 1) % frames.size();
+//         else
+//             frameActual = std::min(frameActual + 1, (int)frames.size() - 1);
+//     }
+
+//     QPixmap frame = frames[frameActual];
+
+//     if (!miraDerecha)
+//         frame = frame.transformed(QTransform().scale(-1, 1));
+
+//     itemGrafico->setPixmap(frame);
+// }
+
+
+void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames,
+                              bool loop, float multVelocidad)
 {
+
     if (frames.isEmpty() || !itemGrafico) return;
 
     tiempoFrame += dt;
-    if (tiempoFrame >= duracionFrame)
+
+    // multVelocidad > 1 → cada frame dura más → animación más lenta
+    float duracionEfectiva = duracionFrame * multVelocidad;
+
+    if (tiempoFrame >= duracionEfectiva)
     {
         tiempoFrame = 0.f;
         if (loop)
@@ -352,8 +442,27 @@ void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
 
     QPixmap frame = frames[frameActual];
 
+    // Flip horizontal (izquierda/derecha)
     if (!miraDerecha)
         frame = frame.transformed(QTransform().scale(-1, 1));
+
+    // ── Tinte visual de boost ─────────────────────────────────────────────
+    // Pinta un overlay cian semitransparente encima del sprite.
+    // Solo afecta los píxeles no transparentes (CompositionMode_SourceAtop).
+    // Cambia QColor(0, 200, 255, 90) por el color que prefieras.
+    if (boostActivo)
+    {
+        //qdebug("Intentando boost");
+        QPixmap tinted(frame.size());
+        tinted.fill(Qt::transparent);
+        QPainter p(&tinted);
+        p.drawPixmap(0, 0, frame);                          // sprite original
+        p.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        p.fillRect(frame.rect(), QColor(0, 200, 255, 60)); // tinte cian
+        p.end();
+        frame = tinted;
+        //qdebug("boost hecho");
+    }
 
     itemGrafico->setPixmap(frame);
 }
@@ -394,79 +503,101 @@ void Personaje::despegarSuelo()
 void Personaje::cargarSpritesNivel1()
 {
     QPixmap sheet(":/Kael_nivel1/Sprites/Nivel1/sprites nivel 1 kael.png");
-    if (sheet.isNull())
-    {
-        qDebug() << "ERROR Nivel1: No se pudo cargar sprites nivel 1 kael.png";
+    if (sheet.isNull()) {
+        qDebug() << "ERROR: No se cargo sprites nivel 1 kael.png";
         return;
     }
+    qDebug() << "Spritesheet N1:" << sheet.width() << "x" << sheet.height();
 
-    qDebug() << "Spritesheet N1 cargada:" << sheet.width() << "x" << sheet.height();
+    const int TW = static_cast<int>(ANCHO);  // 70
+    const int TH = static_cast<int>(ALTO);   // 70
 
-    // ── Dimensiones de cada frame ────────────────────────────
-    const int FW = 120;   // ancho de cada frame en la hoja
-    const int FH = 160;   // alto  de cada frame en la hoja
-    const int SEP = 0;    // separación horizontal entre frames
-
-    // Color de fondo a eliminar (ajustar según la imagen real)
-    QColor fondoColor(0x0d, 0x0e, 0x1a);
-    int    tolerancia = 12;
-
-    // Lambda recortar
-    auto recortar = [&](QVector<QPixmap>& dest, int ox, int oy, int nFrames)
+    // Recorta un frame del sheet, elimina fondo negro y escala a TW x TH
+    auto extraer = [&](int x1, int y1, int w, int h) -> QPixmap
     {
-        dest.clear();
-        for (int i = 0; i < nFrames; ++i)
-        {
-            int sx = ox + i * (FW + SEP);
-            if (sx + FW <= sheet.width() && oy + FH <= sheet.height())
-            {
-                QPixmap f = sheet.copy(sx, oy, FW, FH);
-                // Escalar al tamaño lógico del personaje
-                f = f.scaled(static_cast<int>(ANCHO),
-                             static_cast<int>(ALTO),
-                             Qt::KeepAspectRatio,
-                             Qt::SmoothTransformation);
-                dest.append(eliminarFondo(f, fondoColor, tolerancia));
-            }
-            else
-            {
-                QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
-                ph.fill(Qt::transparent);
-                dest.append(ph);
-                qDebug() << "WARN N1: frame" << i << "fuera de la hoja en ox=" << ox << "oy=" << oy;
-            }
+        if (x1<0||y1<0||x1+w>sheet.width()||y1+h>sheet.height()) {
+            QPixmap ph(TW,TH); ph.fill(Qt::transparent); return ph;
         }
+        QImage img = sheet.copy(x1,y1,w,h).toImage()
+                         .convertToFormat(QImage::Format_ARGB32);
+        for (int py=0; py<img.height(); ++py)
+            for (int px=0; px<img.width(); ++px) {
+                QColor c = img.pixelColor(px,py);
+                if (c.red()<15 && c.green()<15 && c.blue()<15)
+                    img.setPixelColor(px,py,Qt::transparent);
+            }
+        return QPixmap::fromImage(img)
+            .scaled(TW,TH,Qt::KeepAspectRatio,
+                    Qt::SmoothTransformation);
     };
 
-    // ── Cargar cada animación ─────────────────────────────────
-    //   Ajusta ox/oy según tu spritesheet real
-    //   (Valores basados en la imagen de diseño proporcionada)
+    // ── FILA 1 (y=44 h=65): SPRINT ───────────────────────────
+    // 8 grupos detectados:
+    // Grupo 1: x=17  w=36  → IDLE (estático)
+    // Grupos 2-8: x=86,148,206,269,346,402,490 → frames corriendo
+    n1_framesIdle.clear();
+    n1_framesIdle.append(extraer(17, 44, 36, 65));
 
-    // Fila 1 — IDLE: 1 frame al inicio, luego CORRER 8 frames
-    recortar(n1_framesIdle,      0,   55, 1);
-    recortar(n1_framesCorriendo, 130, 55, 8);
+    n1_framesCorriendo.clear();
+    n1_framesCorriendo.append(extraer( 86, 44,  42, 65));
+    n1_framesCorriendo.append(extraer(148, 44,  44, 65));
+    n1_framesCorriendo.append(extraer(206, 44,  54, 65));
+    n1_framesCorriendo.append(extraer(269, 44,  61, 65));
+    n1_framesCorriendo.append(extraer(346, 44,  55, 65));
+    n1_framesCorriendo.append(extraer(402, 44,  64, 65));
+    n1_framesCorriendo.append(extraer(490, 44,  51, 65));
 
-    // Fila 2 — SALTAR (5f) a la izquierda, DOBLE SALTO (5f) a la derecha
-    recortar(n1_framesSaltando,   0,  230, 5);
-    recortar(n1_framesDobleSalto, 720, 230, 5);
+    // ── FILA 2 (y=110 h=98): SALTO ───────────────────────────
+    // 9 grupos detectados:
+    // Grupo 1: x=18   w=38  → preparación
+    // Grupo 2: x=70   w=173 → arco (pegados, dividir en 3x57)
+    // Grupo 3: x=251  w=40  → apex
+    // Grupo 4: x=322  w=33  → caída f1
+    // Grupo 5: x=371  w=34  → caída f2
+    // Grupo 6: x=418  w=38  → caída f3
+    // Grupo 7: x=462  w=89  → doble salto flash (dividir en 2x44)
+    // Grupo 8: x=552  w=43  → post doble salto
+    // Grupo 9: x=605  w=39  → aterrizaje
+    n1_framesSaltando.clear();
+    n1_framesSaltando.append(extraer( 18, 110, 38, 98));  // prep
+    n1_framesSaltando.append(extraer( 70, 110, 57, 98));  // arco f1
+    n1_framesSaltando.append(extraer(127, 110, 58, 98));  // arco f2
+    n1_framesSaltando.append(extraer(185, 110, 58, 98));  // arco f3
+    n1_framesSaltando.append(extraer(251, 110, 40, 98));  // apex
+    n1_framesSaltando.append(extraer(322, 110, 33, 98));  // caída f1
+    n1_framesSaltando.append(extraer(371, 110, 34, 98));  // caída f2
+    n1_framesSaltando.append(extraer(418, 110, 38, 98));  // caída f3
+    n1_framesSaltando.append(extraer(462, 110, 44, 98));  // doble f1
+    n1_framesSaltando.append(extraer(506, 110, 45, 98));  // doble f2
+    n1_framesSaltando.append(extraer(552, 110, 43, 98));  // post
+    n1_framesSaltando.append(extraer(605, 110, 39, 98));  // aterrizaje
 
-    // Fila 3 — VIENTO CAIDA (5f) + impacto (1f) | COLISION (4f)
-    recortar(n1_framesVientoCalda, 0,   430, 5);
-    recortar(n1_framesColision,    720, 430, 4);
+    // ── FILA 3 (y=214 h=66): VIENTO — OMITIDA ────────────────
+    n1_framesVientoCalda.clear();  // vacío hasta implementar ventilador
 
-    // Estado inicial
+    // ── FILA 4 (y=294 h=59): CAÍDA FINAL ─────────────────────
+    // Solo los 3 primeros grupos son del personaje.
+    // Grupos 4-7 son obstáculos/UI del nivel — ignorar.
+    // Grupo 1: x=18  w=60
+    // Grupo 2: x=96  w=60
+    // Grupo 3: x=180 w=67
+    n1_framesCaidaFinal.clear();
+    n1_framesCaidaFinal.append(extraer( 18, 294, 60, 59));
+    n1_framesCaidaFinal.append(extraer( 96, 294, 60, 59));
+    n1_framesCaidaFinal.append(extraer(180, 294, 67, 59));
+
+    // ── Estado inicial ─────────────────────────────────────────
     estadoAnim    = EstadoAnim::IDLE;
     frameActual   = 0;
     tiempoFrame   = 0.f;
-    duracionFrame = 0.08f;   // ~12 FPS de animación
+    duracionFrame = 0.09f;
     miraDerecha   = true;
 
-    qDebug() << "N1 sprites cargados — Idle:" << n1_framesIdle.size()
-             << "Correr:" << n1_framesCorriendo.size()
-             << "Saltar:" << n1_framesSaltando.size()
-             << "DobleSalto:" << n1_framesDobleSalto.size()
-             << "Viento:" << n1_framesVientoCalda.size()
-             << "Colision:" << n1_framesColision.size();
+    qDebug() << "N1 OK:"
+             << "Idle:"       << n1_framesIdle.size()
+             << "Correr:"     << n1_framesCorriendo.size()
+             << "Salto:"      << n1_framesSaltando.size()
+             << "CaidaFinal:" << n1_framesCaidaFinal.size();
 }
 
 // ============================================================
@@ -474,60 +605,56 @@ void Personaje::cargarSpritesNivel1()
 // ============================================================
 void Personaje::cargarSpritesNivel2()
 {
-    // QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
-    QPixmap sheet (":/Kael_nivel2/Sprites/Nivel2/Sprites_kael_movimientos.png");
+    QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/Sprites_kael_movimientos.png");
     if (sheet.isNull())
     {
         qDebug() << "ERROR: No se pudo cargar la hoja de sprites.";
         return;
     }
 
-    const int frameW = 70;
-    const int frameH = 70;
-
-    // ── Lambda: recorta N frames y elimina AMBOS colores de fondo ────────────
-    //
-    //  Fondo 1 → #314d58  (animaciones idle / corriendo / boost)
-    //  Fondo 2 → #0e1527  (animación deslizando)
-    //
-    //  Se aplican en cadena: un pixel sólo necesita coincidir con UNO de los dos
-    //  fondos para volverse transparente, así se limpia toda la hoja por igual.
-    // ─────────────────────────────────────────────────────────────────────────
-    auto recortar = [&](QVector<QPixmap>& destino, int ox, int oy, int numFrames)
+    // ── Lambda genérico: acepta cualquier tamaño de frame y separación ───────
+    auto recortar = [&](QVector<QPixmap>& destino,
+                        int ox, int oy,
+                        int numFrames,
+                        int fw, int fh,        // ← ancho y alto del frame
+                        int separacion = 10)   // ← separación entre frames (default 10px)
     {
         destino.clear();
         for (int i = 0; i < numFrames; i++)
         {
-            int xFinal = ox + i * (frameW + 8);   // 8 px de separación entre frames
+            int xFinal = ox + i * (fw + separacion);
 
             QPixmap frame;
-            if (xFinal + frameW <= sheet.width() && oy + frameH <= sheet.height())
+            if (xFinal + fw <= sheet.width() && oy + fh <= sheet.height())
             {
-                frame = sheet.copy(xFinal, oy, frameW, frameH);
+                frame = sheet.copy(xFinal, oy, fw, fh);
             }
             else
             {
                 qDebug() << "WARN: frame" << i << "fuera de la imagen";
-                frame = QPixmap(frameW, frameH);
+                frame = QPixmap(fw, fh);
                 frame.fill(Qt::transparent);
                 destino.append(frame);
                 continue;
             }
 
-            // ── Eliminar fondo normal (#314d58) ──────────────────────────────
             frame = eliminarFondo(frame, QColor(0x31, 0x4d, 0x58), 8);
-            // ── Eliminar fondo desliz (#0e1527) ──────────────────────────────
             frame = eliminarFondo(frame, QColor(0x0e, 0x15, 0x27), 8);
-
             destino.append(frame);
         }
     };
 
-    //             destino           origenX  origenY  numFrames
-    recortar(framesIdle,         40,   140,    4);
-    recortar(framesCorriendo,    40,   336,    8);   // ajusta origenX/Y si están en otra fila
-    recortar(framesDeslizando,   40,   515,    4);
-    recortar(framesBoost,       450,   331,    2);
+    //            destino           ox   oy   frames  fw   fh   sep
+    recortar(framesIdle,            42, 140,    4,    93, 109,  10);
+    recortar(framesCorriendo,       41, 337,    8,    73,  86,  11);
+    recortar(framesDeslizando,      41, 516,    4,    89, 97,  10);
+    // recortar(framesBoost,          450, 331,    2,    93, 109,  10);
+    recortar(framesUprun,      722, 313,    9,    65, 111,  9);             //la espalda del personaje
+    recortar(framesDownrun,         320, 331,    2,    93, 109,  10);      //el frente del personaje, otro datasheet
+
+
+
+
 
     // ── Estado inicial ────────────────────────────────────────────────────────
     estadoAnim    = EstadoAnim::IDLE;
@@ -536,15 +663,14 @@ void Personaje::cargarSpritesNivel2()
     duracionFrame = 0.1f;
     miraDerecha   = true;
 
-    // ── Aplicar primer frame y fijar el pivote de rotación en el centro ──────
-    // Imprescindible para que la rotación en actualizarNivel2 gire alrededor
-    // del centro del sprite en vez de la esquina superior-izquierda.
-    if (itemGrafico)
+    if (itemGrafico && !framesIdle.isEmpty())
     {
-        if (!framesIdle.isEmpty())
-            itemGrafico->setPixmap(framesIdle.at(0));
-
-        itemGrafico->setTransformOriginPoint(frameW / 2.0, frameH / 2.0);
+        itemGrafico->setPixmap(framesIdle.at(0));
+        // Pivote en el centro del primer frame cargado
+        itemGrafico->setTransformOriginPoint(
+            framesIdle.at(0).width()  / 2.0,
+            framesIdle.at(0).height() / 2.0
+            );
     }
 }
 

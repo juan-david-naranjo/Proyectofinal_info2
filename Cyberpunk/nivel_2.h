@@ -29,6 +29,13 @@
 //    • El jugador debe llegar a la computadora (objetivo) sin ser atrapado
 //    • Si el robot toca al jugador → pierde una vida y respawnea
 // ============================================================
+
+struct ZonaOculta {
+    float x, y, w, h;
+};
+
+
+
 class Nivel_2 : public Nivel
 {
 public:
@@ -57,6 +64,11 @@ private:
     QSoundEffect sonidoHackeoLoop;  // loop mientras hackeas la computadora
     QSoundEffect sonidoVictoria;    // hackeo completado
 
+
+    // seccion zona oculta:
+    std::vector<ZonaOculta>  zonasOcultas;
+    QList<QGraphicsRectItem*> itemsZonas;   // visuales oscuros
+    bool jugadorEnSombra() const;
 
     // ── Sonidos fondo ────────────────────────────────────────────────────
     QMediaPlayer musicaFondo;
