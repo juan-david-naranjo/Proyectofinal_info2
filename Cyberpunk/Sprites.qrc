@@ -9,6 +9,7 @@
         <file>Sprites/Nivel2/Escenario2.png</file>
         <file>Sprites/Nivel2/Sprites_kael_movimientos.png</file>
         <file>Sprites/Nivel2/Escenario_V2.png</file>
+        <file>Sprites/Nivel2/murosV2.png</file>
     </qresource>
     <qresource prefix="/Sonidos">
         <file>Sonidos/sonido_fondo.mp3</file>

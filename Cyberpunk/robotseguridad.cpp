@@ -77,11 +77,11 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
             {
                 QPixmap ph(fw, fh);
                 ph.fill(Qt::transparent);
-                framesPatrullaje.append(ph);
+                framesPatrullaje.push_back(ph);
                 continue;
             }
             QPixmap frame = sheet.copy(x, oy, fw, fh);
-            framesPatrullaje.append(quitarFondo(frame, bg, 10));
+            framesPatrullaje.push_back(quitarFondo(frame, bg, 10));
         }
     }
 
@@ -127,14 +127,14 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
             QPixmap limpio = quitarFondo(raw, af.bg, 10);
 
             // Escalar al tamaño de referencia para animación uniforme
-            framesAlert.append(
+            framesAlert.push_back(
                 limpio.scaled(refW, refH, Qt::KeepAspectRatio, Qt::SmoothTransformation)
                 );
         }
     }
 
     // ── Aplicar primer frame y pivote de rotación en el centro ───────────────
-    if (itemGrafico && !framesPatrullaje.isEmpty())
+    if (itemGrafico && !framesPatrullaje.empty())
     {
         const QPixmap& f0 = framesPatrullaje.at(0);
         itemGrafico->setPixmap(f0);
@@ -203,7 +203,7 @@ float RobotSeguridad::calcularDistancia() const
 
 void RobotSeguridad::razonar(bool jugadorOculto)
 {
-     qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
+     //qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
     switch (estado)
     {
     case EstadoAgente::PATRULLAJE:
@@ -231,6 +231,7 @@ void RobotSeguridad::razonar(bool jugadorOculto)
         }
         break;
     }
+
 }
 
 // ── ACTUAR ───────────────────────────────────────────────────────────────────
@@ -258,21 +259,88 @@ void RobotSeguridad::actuar(float dt)
         }
         break;
     }
-
     case EstadoAgente::PERSECUCION:
     {
         tiempoPersecucion += dt;
-        // Guardar la última posición vista (aprendizaje continuo)
+
+        // Guardar historial de posición vista
         if (historial.empty() ||
             std::abs(jugadorPosX - historial.back().x) > 20.f ||
             std::abs(jugadorPosY - historial.back().y) > 20.f)
         {
             historial.push_back(Punto2D(jugadorPosX, jugadorPosY));
         }
-        // Perseguir con velocidad aumentada
-        moverHacia(jugadorPosX, jugadorPosY, dt);
+
+        // ── Detección de atasco ───────────────────────────────
+        float dxMov = x - posXAnterior;
+        float dyMov = y - posYAnterior;
+        float movimiento = std::sqrt(dxMov*dxMov + dyMov*dyMov);
+
+        // Umbral normalizado a 60fps para que dt no afecte
+        if (movimiento < 3.f * dt * 60.f)
+            tiempoStuck += dt;
+        else
+            tiempoStuck = 0.f;
+
+        posXAnterior = x;
+        posYAnterior = y;
+
+        // ── Si llegó al punto de desvío, cancelarlo ───────────
+        if (tieneDesvio)
+        {
+            float dxD = puntoDesvio.x - x;
+            float dyD = puntoDesvio.y - y;
+            if (std::sqrt(dxD*dxD + dyD*dyD) < RADIO_LLEGADA_DESVIO)
+                tieneDesvio = false;
+        }
+
+        // ── Generar desvío si está atascado ───────────────────
+        if (tiempoStuck >= UMBRAL_STUCK)
+        {
+            float dxJ = jugadorPosX - x;
+            float dyJ = jugadorPosY - y;
+            float dist = std::sqrt(dxJ*dxJ + dyJ*dyJ);
+
+            if (dist > 1.f)
+            {
+                // Dirección normalizada hacia el jugador
+                float nx =  dxJ / dist;
+                float ny =  dyJ / dist;
+
+                // Perpendicular: rotar 90° según ladoDesvio
+                float px = -ny * ladoDesvio;
+                float py =  nx * ladoDesvio;
+
+                puntoDesvio.x = x + px * DIST_DESVIO;
+                puntoDesvio.y = y + py * DIST_DESVIO;
+                tieneDesvio   = true;
+                tiempoStuck   = 0.f;
+                ladoDesvio   *= -1;  // próximo atasco gira al lado contrario
+            }
+        }
+
+        // ── Moverse al desvío o directo al jugador ────────────
+        if (tieneDesvio)
+            moverHacia(puntoDesvio.x, puntoDesvio.y, dt);
+        else
+            moverHacia(jugadorPosX, jugadorPosY, dt);
+
         break;
     }
+    // case EstadoAgente::PERSECUCION:
+    // {
+    //     tiempoPersecucion += dt;
+    //     // Guardar la última posición vista (aprendizaje continuo)
+    //     if (historial.empty() ||
+    //         std::abs(jugadorPosX - historial.back().x) > 20.f ||
+    //         std::abs(jugadorPosY - historial.back().y) > 20.f)
+    //     {
+    //         historial.push_back(Punto2D(jugadorPosX, jugadorPosY));
+    //     }
+    //     // Perseguir con velocidad aumentada
+    //     moverHacia(jugadorPosX, jugadorPosY, dt);
+    //     break;
+    // }
     }
 
     // Sincronizar sprite

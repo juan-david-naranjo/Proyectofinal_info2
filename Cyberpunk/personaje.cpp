@@ -50,7 +50,7 @@ Personaje::Personaje(float X, float Y) : Personaje()
 
 
 
-   //  if (n1_framesIdle.isEmpty())
+   //  if (n1_framesIdle.empty())
    //  {
    //      QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
    //      ph.fill(QColor(255, 80, 80));
@@ -67,7 +67,7 @@ Personaje::Personaje(float X, float Y) : Personaje()
     cargarSpritesNivel2();
 
 
-     if (framesIdle.isEmpty())
+     if (framesIdle.empty())
      {
          QPixmap ph(static_cast<int>(ANCHO), static_cast<int>(ALTO));
          ph.fill(QColor(255, 80, 80));
@@ -258,7 +258,7 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     }
 
     bool loop = (estadoAnim != EstadoAnim::DOBLE_SALTO); // doble salto no looea
-    if (frames) tickAnimacion(dt, *frames, loop);
+    //if (frames) tickAnimacion(dt, *frames, loop);
 
     // ── 8. Flip horizontal ────────────────────────────────────
     // (Aplicado dentro de tickAnimacion)
@@ -339,7 +339,7 @@ void Personaje::actualizarNivel2(float dt)
     }
     estadoAnim = nuevoEstado;
 
-    QVector<QPixmap>* frames = nullptr;
+    std::vector<QPixmap>* frames = nullptr;
     float multAnim = 1.0f;
 
     switch (estadoAnim)
@@ -378,8 +378,9 @@ void Personaje::actualizarNivel2(float dt)
 
     if (frames) tickAnimacion(dt, *frames, true, multAnim);
 
-
     if (itemGrafico) itemGrafico->setPos(x, y);
+
+
 }
 
 
@@ -399,7 +400,7 @@ void Personaje::actualizarNivel2(float dt)
 // ============================================================
 // void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
 // {
-//     if (frames.isEmpty() || !itemGrafico) return;
+//     if (frames.empty() || !itemGrafico) return;
 
 //     tiempoFrame += dt;
 //     if (tiempoFrame >= duracionFrame)
@@ -420,11 +421,11 @@ void Personaje::actualizarNivel2(float dt)
 // }
 
 
-void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames,
+void Personaje::tickAnimacion(float dt, std::vector<QPixmap>& frames,
                               bool loop, float multVelocidad)
 {
 
-    if (frames.isEmpty() || !itemGrafico) return;
+    if (frames.empty() || !itemGrafico) return;
 
     tiempoFrame += dt;
 
@@ -613,7 +614,7 @@ void Personaje::cargarSpritesNivel2()
     }
 
     // ── Lambda genérico: acepta cualquier tamaño de frame y separación ───────
-    auto recortar = [&](QVector<QPixmap>& destino,
+    auto recortar = [&](std::vector<QPixmap>& destino,
                         int ox, int oy,
                         int numFrames,
                         int fw, int fh,        // ← ancho y alto del frame
@@ -634,13 +635,13 @@ void Personaje::cargarSpritesNivel2()
                 qDebug() << "WARN: frame" << i << "fuera de la imagen";
                 frame = QPixmap(fw, fh);
                 frame.fill(Qt::transparent);
-                destino.append(frame);
+                destino.push_back(frame);
                 continue;
             }
 
             frame = eliminarFondo(frame, QColor(0x31, 0x4d, 0x58), 8);
             frame = eliminarFondo(frame, QColor(0x0e, 0x15, 0x27), 8);
-            destino.append(frame);
+            destino.push_back(frame);
         }
     };
 
@@ -648,7 +649,6 @@ void Personaje::cargarSpritesNivel2()
     recortar(framesIdle,            42, 140,    4,    93, 109,  10);
     recortar(framesCorriendo,       45, 338,    8,    66,  86,  15);
     recortar(framesDeslizando,      41, 516,    4,    89, 97,  10);
-    // recortar(framesBoost,          450, 331,    2,    93, 109,  10);
     recortar(framesUprun,      725, 314,    9,    60, 105,  12);             //la espalda del personaje
     recortar(framesDownrun,         320, 331,    2,    93, 109,  10);      //el frente del personaje, otro datasheet
 
@@ -663,7 +663,7 @@ void Personaje::cargarSpritesNivel2()
     duracionFrame = 0.1f;
     miraDerecha   = true;
 
-    if (itemGrafico && !framesIdle.isEmpty())
+    if (itemGrafico && !framesIdle.empty())
     {
         itemGrafico->setPixmap(framesIdle.at(0));
         // Pivote en el centro del primer frame cargado
@@ -717,6 +717,20 @@ void Personaje::resetearPosicion(float rx, float ry)
     estadoAnim      = EstadoAnim::IDLE;
     frameActual     = 0;
     if (itemGrafico) itemGrafico->setPos(x, y);
+}
+
+
+void Personaje::setHitboxOffset(float offsetX,float offsetY, float anchoEfectivo ,float altoEfectivo) {
+    hitboxOffsetY  = offsetY;
+    hitboxOffsetX  = offsetX;
+    hitboxAltoReal = altoEfectivo;
+    hitboxAnchoReal = anchoEfectivo;
+    ANCHO  = anchoEfectivo;
+    ALTO  = altoEfectivo;
+    x = offsetX;
+    y = offsetY;
+
+
 }
 
 // ============================================================

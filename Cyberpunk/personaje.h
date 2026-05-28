@@ -2,6 +2,7 @@
 #define PERSONAJE_H
 
 #include "entidadjuego.h"
+#include <vector>
 #include <QKeyEvent>
 #include <QPixmap>
 #include <QDebug>
@@ -65,7 +66,12 @@ public:
     float getAncho()        const { return ANCHO; }
     float getAlto()         const { return ALTO;  }
 
-    Hitbox getHitbox() const override { return Hitbox(x, y, ANCHO, ALTO); }
+    // Hitbox getHitbox() const override { return Hitbox(x, y, ANCHO, ALTO); }
+    Hitbox getHitbox() const override {
+        return Hitbox(x+hitboxOffsetX, y + hitboxOffsetY, hitboxAnchoReal, hitboxAltoReal);
+    }
+
+    void setHitboxOffset(float offsetX,float offsetY,float anchoEfectivo, float altoEfectivo);
 
     // ── Daño / reset ──────────────────────────────────────────
     void recibirDanio(int cantidad = 1);
@@ -73,8 +79,16 @@ public:
 
 private:
     // ── Tamaño del sprite ─────────────────────────────────────
-    static constexpr float ANCHO = 70.f;
-    static constexpr float ALTO  = 124.f;
+    // static constexpr float ANCHO = 70.f;
+    // static constexpr float ALTO  = 100.f;
+
+    float ANCHO = 70.f;
+    float ALTO  = 100.f;
+
+    float hitboxOffsetY  = 0.f;
+    float hitboxOffsetX = 0.f;
+    float hitboxAnchoReal  = ANCHO;
+    float hitboxAltoReal = ALTO;
 
     // ── Utilidades de sprites ─────────────────────────────────
     QPixmap eliminarFondo(const QPixmap& source, QColor colorFondo, int tolerancia);
@@ -88,13 +102,13 @@ private:
     QVector<QPixmap> n1_framesColision;       // COLISIÓN/CAÍDA
 
     // ── Vectores de frames por animación — Nivel 2 ────────────
-    QVector<QPixmap> framesIdle;
-    QVector<QPixmap> framesCorriendo;
-    QVector<QPixmap> framesDeslizando;
-    // QVector<QPixmap> framesBoost;
-    QVector<QPixmap> framesUprun;
-    QVector<QPixmap> framesDownrun;
 
+    // Nivel 2
+    std::vector<QPixmap> framesIdle;
+    std::vector<QPixmap> framesCorriendo;
+    std::vector<QPixmap> framesDeslizando;
+    std::vector<QPixmap> framesUprun;
+    std::vector<QPixmap> framesDownrun;
 
 
     // ── Estado de animación ───────────────────────────────────
@@ -158,8 +172,11 @@ private:
     // void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop = true);
 
     // personaje.h — actualizar la firma:
-    void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop,
-                       float multVelocidad = 1.0f);  // 1.0 = normal, >1 = más lento
+    // void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop,
+    //                    float multVelocidad = 1.0f);  // 1.0 = normal, >1 = más lento
+    void tickAnimacion(float dt, std::vector<QPixmap>& frames, bool loop,
+                       float multVelocidad = 1.0f);
+
 };
 
 #endif // PERSONAJE_H

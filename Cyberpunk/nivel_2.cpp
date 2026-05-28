@@ -8,11 +8,11 @@
 
 Nivel_2::Nivel_2()
     : Nivel()
-    , objetivoX(638.f)
-    , objetivoY(314.f)
+    , objetivoX(1170.f)
+    , objetivoY(308.f)
     , objetivoRadio(40.f)
-    , spawnX(50.f)
-    , spawnY(50.f)
+    , spawnX(677.f)
+    , spawnY(147.f)
     , escena(nullptr)
     , tiempoContador(0.f)
     ,itemObjetivo(nullptr)
@@ -40,10 +40,12 @@ void Nivel_2::limpiarRobots()
 // ── Inicializar ──────────────────────────────────────────────────────────────
 void Nivel_2::inicializar(Personaje* p)
 {
+
     jugador = p;
+    jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
 
     generarLaberinto();
-    // generarRobots();
+    //generarRobots();
 
     if (jugador)
         jugador->resetearPosicion(spawnX, spawnY);
@@ -91,60 +93,34 @@ void Nivel_2::generarLaberinto()
 
     // ── Paredes internas del laberinto (vista cenital) ────────────────────
     // Estructura: {x, y, ancho, alto}
-    struct Wall { float x, y, w, h; };
+     struct Wall { float x, y, w, h; Plataforma::TipoMuro tipo; };
     static const Wall paredes[] =
         {
-         //----- pared(H) superior derecho-------
-         { 292.f,  202.f,  1003.f, 15.f },
-
-
-        //----- pared(H) superior izquierdo------
-        { 16.f, 236.f,  189.f, 16.f },
-
-
-        //---- pared(V) que conecta con el corredor superior derecho---
-         { 292.f, 202.f,  20.f, 403.f },
-
-
-        //---- paredes(H) horizontal inferior que conecta con la pared
-
-         { 312.f,  586.f, 334.f,  20.f },
-         { 771.f,  586.f, 524.f,  20.f },
-
-         // ---- laberinto central-----
-         { 771.f, 486.f,  20.f, 100.f },
-         { 451.f, 430.f, 320.f,  20.f },
-
-         // // ── Sector 3 ──
-         // { 400.f,  20.f,  20.f, 280.f },
-         // { 500.f, 180.f,  20.f, 240.f },
-         // { 400.f, 480.f, 200.f,  20.f },
-
-         // // ── Sector 4 ──
-         // { 600.f,  20.f,  20.f, 160.f },
-         // { 540.f, 380.f, 240.f,  20.f },
-         // { 600.f, 480.f,  20.f, 200.f },
-
-         // // ── Corredor horizontal inferior ──
-         // { 120.f, 580.f, 280.f,  20.f },
-         // { 500.f, 580.f, 280.f,  20.f },
-
-         // // ── Bloques de cobertura (el jugador puede esconderse) ──
-         // { 160.f, 140.f,  60.f,  60.f },
-         // { 350.f, 120.f,  60.f,  60.f },
-         // { 460.f, 320.f,  60.f,  60.f },
-         // { 650.f, 560.f,  60.f,  60.f },
+        {  292.f, 202.f, 1003.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
+        {   16.f, 236.f,  189.f,  16.f, Plataforma::TipoMuro::HORIZONTAL },
+        {  312.f, 586.f,  334.f,  20.f, Plataforma::TipoMuro::HORIZONTAL },
+        {  771.f, 586.f,  524.f,  20.f, Plataforma::TipoMuro::HORIZONTAL },
+        {  451.f, 460.f,  340.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
+        // Verticales
+        {  292.f, 202.f,   20.f, 403.f, Plataforma::TipoMuro::VERTICAL   },
+        {  771.f, 486.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+        {  451.f, 360.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+        {  617.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+        {  727.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+        {  873.f, 217.f,   15.f, 250.f, Plataforma::TipoMuro::VERTICAL   },
+        { 1034.f, 386.f,   15.f, 200.f, Plataforma::TipoMuro::VERTICAL   },
           };
 
-    zonasOcultas = {
-                    { 20.f, 104.f, 200.f, 200.f },
-                    { 20.f, 680.f, 100.f, 100.f },
-                    // { 460.f, 320.f, 80.f, 80.f },
-                    // { 650.f, 560.f, 80.f, 80.f },
-                    };
+    for (const auto& w : paredes)
+        plataformas.push_back(
+            new Plataforma(w.x, w.y, w.w, w.h, false, w.tipo));
 
-    // for (const auto& w : paredes)
-    //     plataformas.push_back(new Plataforma(w.x, w.y, w.w, w.h));
+
+    zonasOcultas = {
+                    { 8.f, 66.f, 150.f, 100.f },
+                    { 26.f, 660.f, 150.f, 150.f },
+                    { 471.f, 360.f, 100.f, 100.f },
+                    };
 
     for (const auto& z : zonasOcultas)
     {
@@ -152,7 +128,7 @@ void Nivel_2::generarLaberinto()
                                      QPen(Qt::NoPen),
                                      QBrush(QColor(0, 0, 0, 160))); // negro semitransparente
         item->setZValue(1);   // encima del suelo, debajo del personaje
-        itemsZonas.append(item);
+        itemsZonas.push_back(item);
     }
 }
 
@@ -163,10 +139,12 @@ void Nivel_2::generarRobots()
 
     // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
     std::vector<Punto2D> wp1 = {
-        {50.f, 300.f}, {50.f, 500.f}, {50.f, 620.f}, {50.f, 100.f}
+         {220.f, 96.f}, {200.f, 440.f}
     };
+
+    //{196.f, 96.f}, {956.f, 96.f},
     robots.push_back(new RobotSeguridad(
-        50.f, 300.f,
+        200.f, 96.f,
         120.f,  // radioDeteccion
         160.f,  // radioDesenganche
         80.f,   // velPatrulla
@@ -174,31 +152,31 @@ void Nivel_2::generarRobots()
         wp1
         ));
 
-    // ── Robot 2: patrulla el sector central ──────────────────────────────
-    std::vector<Punto2D> wp2 = {
-        {340.f, 200.f}, {540.f, 200.f}, {540.f, 360.f}, {340.f, 360.f}
-    };
-    robots.push_back(new RobotSeguridad(
-        340.f, 200.f,
-        100.f,
-        140.f,
-        90.f,
-        180.f,
-        wp2
-        ));
+    // // ── Robot 2: patrulla el sector central ──────────────────────────────
+    // std::vector<Punto2D> wp2 = {
+    //     {705.f, 715.f}, {540.f, 200.f}, {540.f, 360.f}, {340.f, 360.f}
+    // };
+    // robots.push_back(new RobotSeguridad(
+    //     705.f, 715.f,
+    //     100.f,
+    //     140.f,
+    //     90.f,
+    //     180.f,
+    //     wp2
+    //     ));
 
-    // ── Robot 3: guarda la computadora (mayor radio, más rápido) ─────────
-    std::vector<Punto2D> wp3 = {
-        {660.f, 480.f}, {720.f, 540.f}, {680.f, 620.f}, {620.f, 560.f}
-    };
-    robots.push_back(new RobotSeguridad(
-        660.f, 500.f,
-        150.f,
-        200.f,
-        70.f,
-        210.f,
-        wp3
-        ));
+    // // ── Robot 3: guarda la computadora (mayor radio, más rápido) ─────────
+    // std::vector<Punto2D> wp3 = {
+    //     {677.f, 255.f}, {720.f, 540.f}, {680.f, 620.f}, {620.f, 560.f}
+    // };
+    // robots.push_back(new RobotSeguridad(
+    //     677.f, 255.f,
+    //     150.f,
+    //     200.f,
+    //     70.f,
+    //     210.f,
+    //     wp3
+    //     ));
 }
 
 
@@ -207,35 +185,52 @@ void Nivel_2::generarRobots()
 
 void Nivel_2::agregarItemsEscena()
 {
-    // ── 1. Paredes del laberinto ──────────────────────────────────────────────
+    QPixmap hojaMuros(":/Kael_nivel2/Sprites/Nivel2/murosV2.png");
+    if (hojaMuros.isNull()) qDebug() << "WARN: hoja de muros no cargó";
+    if (!itemsParedes.empty()) return;
     for (Plataforma* plat : plataformas)
     {
         Hitbox hb = plat->getHitbox();
-        QGraphicsRectItem* rect = new QGraphicsRectItem(hb.x, hb.y, hb.w, hb.h);
-        rect->setBrush(QBrush(QColor(30, 50, 90, 230)));
-        rect->setPen(QPen(QColor(70, 110, 180, 200), 1));
-        rect->setZValue(1.0);
-        escena->addItem(rect);
-        itemsParedes.append(rect);
+
+        if (plat->tipoMuro == Plataforma::TipoMuro::SIN_SPRITE)
+        {
+            QGraphicsRectItem* rect = new QGraphicsRectItem(
+                hb.x, hb.y, hb.w, hb.h);
+            rect->setBrush(QBrush(QColor(30, 50, 90, 230)));
+            rect->setPen(QPen(QColor(70, 110, 180, 200), 1));
+            rect->setZValue(1.0);
+            escena->addItem(rect);
+            itemsParedes.push_back(rect);
+        }
+        else if (plat->tipoMuro == Plataforma::TipoMuro::HORIZONTAL)
+        {
+            // ← aquí colocas tus coordenadas del sprite horizontal
+            plat->cargarSprite(hojaMuros, 701, 127, 231, 108);
+
+            if (plat->getItem()) {
+                escena->addItem(plat->getItem());
+                itemsParedes.push_back(plat->getItem());
+            }
+        }
+        else if (plat->tipoMuro == Plataforma::TipoMuro::VERTICAL)
+        {
+            // ← aquí colocas tus coordenadas del sprite vertical
+            plat->cargarSprite(hojaMuros, 965, 127, 138, 217);
+
+            if (plat->getItem()) {
+                escena->addItem(plat->getItem());
+                itemsParedes.push_back(plat->getItem());
+            }
+        }
     }
-
     // ── 2. Objetivo: la computadora ───────────────────────────────────────────
-    itemObjetivo = new QGraphicsEllipseItem(
-        objetivoX - objetivoRadio, objetivoY - objetivoRadio,
-        objetivoRadio * 2.f, objetivoRadio * 2.f);
-    itemObjetivo->setBrush(QBrush(QColor(0, 255, 120, 100)));
-    itemObjetivo->setPen(QPen(QColor(0, 230, 90), 2));
-    itemObjetivo->setZValue(2.0);
-    escena->addItem(itemObjetivo);
 
-    const float iconW = 36.f, iconH = 28.f;
-    QGraphicsRectItem* pantalla = new QGraphicsRectItem(
-        objetivoX - iconW * 0.5f, objetivoY - iconH * 0.5f - 4.f,
-        iconW, iconH);
-    pantalla->setBrush(QBrush(QColor(0, 200, 80)));
-    pantalla->setPen(QPen(Qt::white, 1));
-    pantalla->setZValue(2.1);
-    escena->addItem(pantalla);
+    QPixmap hojaObjetivo(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
+    if (hojaObjetivo.isNull())
+        qDebug() << "WARN: hoja de computadora no cargó";
+
+    // ← el desarrollador coloca sus coordenadas aquí
+    cargarSpriteObjetivo(hojaObjetivo, 731, 557, 137, 140);
 
     // ── 3. Robots de seguridad ────────────────────────────────────────────────
     //
@@ -270,6 +265,7 @@ void Nivel_2::agregarItemsEscena()
             initPix.fill(QColor(180, 30, 30));
         }
 
+
         QGraphicsPixmapItem* spriteItem = new QGraphicsPixmapItem(initPix);
         spriteItem->setTransformOriginPoint(initPix.width()  / 2.0,
                                             initPix.height() / 2.0);
@@ -290,7 +286,7 @@ void Nivel_2::agregarItemsEscena()
         circulo->setPen(QPen(QColor(255, 60, 60, 100), 1, Qt::DashLine));
         circulo->setZValue(0.5);
         escena->addItem(circulo);
-        itemsDeteccion.append(circulo);
+        itemsDeteccion.push_back(circulo);
     }
 
     // ── 4. Personaje (encima de todo) ─────────────────────────────────────────
@@ -302,7 +298,26 @@ void Nivel_2::agregarItemsEscena()
 }
 
 
+void Nivel_2::cargarSpriteObjetivo(const QPixmap& hoja,
+                                   int srcX, int srcY,
+                                   int srcW, int srcH)
+{
+    if (hoja.isNull()) return;
 
+    QPixmap sprite = hoja.copy(srcX, srcY, srcW, srcH);
+    if (sprite.isNull()) return;
+
+    if (!itemObjetivo)
+        itemObjetivo = new QGraphicsPixmapItem();
+
+    itemObjetivo->setPixmap(sprite);
+
+    // Centrar sobre objetivoX, objetivoY
+    itemObjetivo->setPos(objetivoX - srcW * 0.5f,
+                         objetivoY - srcH * 0.5f);
+    itemObjetivo->setZValue(2.0);
+    escena->addItem(itemObjetivo);
+}
 
 
 
@@ -460,6 +475,17 @@ void Nivel_2::actualizar(float dt)
 
     // ── Actualizar personaje (físicas nivel 2: inercia + 4 direcciones) ───
     jugador->actualizarNivel2(dt);
+    if (escena)
+    {
+        static QGraphicsRectItem* debugRect = nullptr;
+        if (!debugRect) {
+            debugRect = escena->addRect(0,0,1,1,
+                                        QPen(QColor(255,0,0,200), 2));
+            debugRect->setZValue(99);
+        }
+        Hitbox hb = jugador->getHitbox();
+        debugRect->setRect(hb.x, hb.y, hb.w, hb.h);
+    }
 
     // ── Resolver colisiones del jugador con las paredes ───────────────────
     resolverColisiones();
@@ -618,4 +644,24 @@ void Nivel_2::setScene(QGraphicsScene *scene)
     else
         scene->setBackgroundBrush(QColor(20, 28, 40));  // Fallback oscuro
 
+}
+
+
+
+
+void Nivel_2::limpiarEscena()
+{
+    // Nullear punteros ANTES de que scena->clear() los destruya
+    itemsParedes.clear();
+    itemsZonas.clear();
+    itemsDeteccion.clear();
+    itemObjetivo = nullptr;
+
+    // Nullear itemGrafico de cada plataforma — scena->clear() ya los destruyó
+    for (Plataforma* plat : plataformas)
+        plat->setItemNull();  // evita double-free en limpiarPlataformas
+
+    // Nullear itemGrafico de cada robot
+    for (RobotSeguridad* robot : robots)
+        robot->setItemGrafico(nullptr);
 }

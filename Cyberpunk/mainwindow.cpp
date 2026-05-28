@@ -120,6 +120,17 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     case Qt::Key_Shift:
         if (nivelActual == 2) jugador->activarDeslizNivel2();
         break;
+    case Qt::Key_R:
+        if (!timer->isActive())   // solo si el juego está pausado (victoria/derrota)
+        {
+            nivel2->limpiarEscena();   // ← primero nullear punteros internos
+            scena->clear();            // ← luego Qt destruye los items
+            nivel2->completado = false;
+            nivel2->setScene(scena);
+            nivel2->inicializar(jugador);
+            timer->start(MS_POR_TICK);
+        }
+        break;
 
     default: break;
     }

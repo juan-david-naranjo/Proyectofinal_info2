@@ -55,7 +55,11 @@ public:
 
 
     //para el escenario
+    void limpiarEscena();
     void setScene(QGraphicsScene* scene);
+    void    cargarSpriteObjetivo(const QPixmap& hoja,
+                                   int srcX, int srcY,
+                              int srcW, int srcH);
 
 private:
 
@@ -65,9 +69,11 @@ private:
     QSoundEffect sonidoVictoria;    // hackeo completado
 
 
+
+
     // seccion zona oculta:
     std::vector<ZonaOculta>  zonasOcultas;
-    QList<QGraphicsRectItem*> itemsZonas;   // visuales oscuros
+    std::vector<QGraphicsRectItem*> itemsZonas;     // visuales oscuros
     bool jugadorEnSombra() const;
 
     // ── Sonidos fondo ────────────────────────────────────────────────────
@@ -82,8 +88,7 @@ private:
     // ── Control de cambios de estado para el sonido de detección ─────────────
     std::vector<EstadoAgente> estadosAnteriores;
 
-    // Cambiar firma de verificarVictoria para recibir dt:
-    void verificarVictoria(float dt);
+
 
 
 
@@ -107,9 +112,10 @@ private:
 
 
     // Ítems visuales (propiedad de la escena, no los borramos)
-    QList<QGraphicsRectItem*>    itemsParedes;    ///< Rectángulos de las paredes
-    QGraphicsEllipseItem*        itemObjetivo;    ///< Círculo del objetivo
-    QList<QGraphicsEllipseItem*> itemsDeteccion;  ///< Círculos de detección por robot
+    std::vector<QGraphicsItem*>    itemsParedes;    ///< Rectángulos de las paredes
+    // QGraphicsEllipseItem*        itemObjetivo;    ///< Círculo del objetivo
+    QGraphicsPixmapItem* itemObjetivo;
+    std::vector<QGraphicsEllipseItem*> itemsDeteccion;  ///< Círculos de detección por robot
 
 
     void generarLaberinto();
@@ -120,6 +126,7 @@ private:
 
     void resolverColisiones();    ///< Jugador ↔ paredes
     void verificarDeteccion();    ///< Robot alcanza al jugador → daño + respawn
+    void verificarVictoria(float dt);
     // void verificarVictoria(float dt);     ///< Jugador llega a la computadora
 
     void agregarItemsEscena();    ///< Crea y añade todos los QGraphicsItem a la escena

@@ -72,12 +72,12 @@ public:
     float        getRadioDeteccion()const { return radioDeteccion; }
 
 
-    // [NUEVO] — Asigna el ítem gráfico creado por el nivel en la escena
+
     void setItemGrafico(QGraphicsPixmapItem* item) { itemGrafico = item; }
 
     QPixmap getPrimerFrame() const
     {
-         if (!framesPatrullaje.isEmpty()) return framesPatrullaje.at(0);
+         if (!framesPatrullaje.empty()) return framesPatrullaje.at(0);
          return QPixmap();
     }
 
@@ -94,12 +94,26 @@ private:
     float velPersecucion;
 
     // Miembros privados nuevos (sección private)
-     QVector<QPixmap> framesPatrullaje;
-     QVector<QPixmap> framesAlert;
+    std::vector<QPixmap> framesPatrullaje;
+    std::vector<QPixmap> framesAlert;
+     // QVector<QPixmap> framesPatrullaje;
+     // QVector<QPixmap> framesAlert;
      int   frameActual            = 0;
      float tiempoFrame            = 0.f;
      float duracionFramePatrullaje;
      float duracionFrameAlert;
+
+     // ── Detección de atasco ───────────────────────────────────
+     float   posXAnterior  = 0.f;
+     float   posYAnterior  = 0.f;
+     float   tiempoStuck   = 0.f;
+     bool    tieneDesvio   = false;
+     Punto2D puntoDesvio   = {0.f, 0.f};
+     int     ladoDesvio    = 1;          // alterna +1/-1 para no girar siempre igual
+
+     static constexpr float UMBRAL_STUCK = 0.35f;  // segundos sin moverse → atascado
+     static constexpr float DIST_DESVIO  = 90.f;   // distancia del punto de rodeo
+     static constexpr float RADIO_LLEGADA_DESVIO = 25.f;
 
 
 
