@@ -2,19 +2,25 @@
 #define PERSONAJE_H
 
 #include "entidadjuego.h"
+#include <vector>
 #include <QKeyEvent>
 #include <QPixmap>
 #include <QDebug>
+#include <QPainter>
 
 // ============================================================
-//  Personaje — Kael
+//  Personaje — Kael  (merge LOCAL + REMOTE)
 //
-//  Spritesheet nivel 1 (669x373, fondo negro):
+//  Nivel 1 (spritesheet 669x373, fondo negro):
 //    Fila 1 (y=44-109):  IDLE (1f) + CORRER (7f)
 //    Fila 2 (y=110-208): SALTO completo (12f)
 //    Fila 3 (y=214-280): VIENTO — OMITIDA (pendiente ventilador)
-//    Fila 4 (y=294-353): CAÍDA FINAL (3f, grupos 1-3 del personaje)
-//                        Se activa al caer ≥4 plataformas (~480px)
+//    Fila 4 (y=294-353): CAÍDA FINAL (3f) — ≥4 plataformas de caída
+//
+//  Nivel 2:
+//    IDLE, CORRIENDO, CORRIENDO_ARRIBA, CORRIENDO_ABAJO,
+//    DESLIZANDO (con activarDeslizNivel2), BOOST con tinte cian
+//    Hitbox ajustable en tiempo de ejecución (setHitboxOffset)
 // ============================================================
 class Personaje : public EntidadJuego
 {
@@ -28,7 +34,8 @@ public:
     void keyReleased(int key);
     void saltar();
     void activarBoost();
-    void activarDesliz();
+    void activarDesliz();           // nivel 1 (solo en suelo)
+    void activarDeslizNivel2();     // nivel 2 (en movimiento, con impulso)
 
     // ── Actualización ─────────────────────────────────────────
     void actualizar(float dt) override;
@@ -41,9 +48,13 @@ public:
     void cargarSpritesNivel1();
     void cargarSpritesNivel2();
 
-    // ── Caída final ────────────────────────────────────────────
+    // ── Caída final (nivel 1) ─────────────────────────────────
     void activarCaidaFinal();
     bool caidaFinalTerminada() const;
+
+    // ── Hitbox ajustable (nivel 2) ────────────────────────────
+    void setHitboxOffset(float offsetX, float offsetY,
+                         float anchoEfectivo, float altoEfectivo);
 
     // ── Getters ───────────────────────────────────────────────
     int   getVidas()        const;
@@ -55,40 +66,57 @@ public:
     float getYMasAlta()     const;
     float getAncho()        const { return ANCHO; }
     float getAlto()         const { return ALTO;  }
-    Hitbox getHitbox() const override { return Hitbox(x, y, ANCHO, ALTO); }
+
+    Hitbox getHitbox() const override {
+        return Hitbox(x + hitboxOffsetX, y + hitboxOffsetY,
+                      hitboxAnchoReal,   hitboxAltoReal);
+    }
 
     // ── Daño / reset ──────────────────────────────────────────
     void recibirDanio(int cantidad = 1);
     void resetearPosicion(float rx, float ry);
 
 private:
-    // ── Tamaño lógico ─────────────────────────────────────────
-    static constexpr float ANCHO = 70.f;
-    static constexpr float ALTO  = 70.f;
+    // ── Tamaño lógico (modificable via setHitboxOffset) ───────
+    float ANCHO = 70.f;
+    float ALTO  = 70.f;
 
+    // Hitbox interna (puede diferir del sprite para mayor precisión)
+    float hitboxOffsetX  = 0.f;
+    float hitboxOffsetY  = 0.f;
+    float hitboxAnchoReal = 70.f;
+    float hitboxAltoReal  = 70.f;
+
+    // ── Helpers ───────────────────────────────────────────────
     QPixmap eliminarFondo(const QPixmap& src, QColor cf, int tol);
 
     // ── Animaciones Nivel 1 ───────────────────────────────────
-    QVector<QPixmap> n1_framesIdle;         // Fila 1, grupo 1  (1f)
-    QVector<QPixmap> n1_framesCorriendo;    // Fila 1, grupos 2-8 (7f)
-    QVector<QPixmap> n1_framesSaltando;     // Fila 2, todos (12f)
-    QVector<QPixmap> n1_framesVientoCalda;  // Fila 3 — OMITIDA, siempre vacío
-    QVector<QPixmap> n1_framesCaidaFinal;   // Fila 4, grupos 1-3 (3f)
+    QVector<QPixmap> n1_framesIdle;          // Fila 1, grupo 1   (1f)
+    QVector<QPixmap> n1_framesCorriendo;     // Fila 1, grupos 2-8 (7f)
+    QVector<QPixmap> n1_framesSaltando;      // Fila 2, todos     (12f)
+    QVector<QPixmap> n1_framesVientoCalda;   // Fila 3 — OMITIDA, siempre vacío
+    QVector<QPixmap> n1_framesCaidaFinal;    // Fila 4, grupos 1-3 (3f)
 
     // ── Animaciones Nivel 2 ───────────────────────────────────
-    QVector<QPixmap> framesIdle;
-    QVector<QPixmap> framesCorriendo;
-    QVector<QPixmap> framesDeslizando;
-    QVector<QPixmap> framesBoost;
+    std::vector<QPixmap> framesIdle;
+    std::vector<QPixmap> framesCorriendo;
+    std::vector<QPixmap> framesDeslizando;
+    std::vector<QPixmap> framesUprun;      // movimiento hacia arriba
+    std::vector<QPixmap> framesDownrun;    // movimiento hacia abajo
 
     // ── Estado de animación ───────────────────────────────────
     enum class EstadoAnim {
+        // Comunes
         IDLE,
         CORRIENDO,
+        // Nivel 1
         SALTANDO,
-        CAIDA_FINAL,    // animación antes del respawn
-        DESLIZANDO,     // nivel 2
-        BOOST           // nivel 2
+        CAIDA_FINAL,
+        // Nivel 2
+        CORRIENDO_ARRIBA,
+        CORRIENDO_ABAJO,
+        DESLIZANDO,
+        BOOST
     };
 
     EstadoAnim estadoAnim;
@@ -96,14 +124,14 @@ private:
     float      tiempoFrame;
     float      duracionFrame;
     bool       miraDerecha;
-    bool       enCaidaFinal;
+    bool       enCaidaFinal;       // bloquea física durante animación caída
 
     // ── Estado general ────────────────────────────────────────
     int   vidas;
     float energia;
     float velMax;
     bool  enSuelo;
-    bool  keys[4];      // 0=Izq 1=Der 2=Up 3=Down
+    bool  keys[4];       // 0=Izq 1=Der 2=Up 3=Down
     QPixmap* Sprite;
 
     // ── Salto ─────────────────────────────────────────────────
@@ -113,25 +141,30 @@ private:
     float tiempoViento;
     static constexpr float UMBRAL_VIENTO = 0.6f;
 
-    // ── Detección caída profunda ──────────────────────────────
-    float yMasAlta;     // Y mínima alcanzada (valor menor = más arriba)
+    // ── Caída profunda (nivel 1) ──────────────────────────────
+    float yMasAlta;
     int   plataformasCalda;
 
-    // ── Deslizamiento (N2) ────────────────────────────────────
+    // ── Deslizamiento ─────────────────────────────────────────
     bool  deslizando;
     float tiempoDesliz;
     static constexpr float DURACION_DESLIZ_MAX = 0.8f;
 
-    // ── Boost (N2) ────────────────────────────────────────────
+    // ── Boost ─────────────────────────────────────────────────
     bool  boostActivo;
     float tiempoBoost;
     static constexpr float DURACION_BOOST      = 3.f;
     static constexpr float MULTIPLICADOR_BOOST = 2.0f;
 
-    // ── Sigilo (N2) ───────────────────────────────────────────
+    // ── Sigilo (nivel 2) ──────────────────────────────────────
     float factorSigilo;
 
+    // ── tickAnimacion — dos sobrecargas ───────────────────────
+    // Nivel 1: usa QVector<QPixmap>
     void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop);
+    // Nivel 2: usa std::vector<QPixmap> + multiplicador de velocidad
+    void tickAnimacion(float dt, std::vector<QPixmap>& frames,
+                       bool loop, float multVelocidad = 1.0f);
 };
 
 #endif // PERSONAJE_H

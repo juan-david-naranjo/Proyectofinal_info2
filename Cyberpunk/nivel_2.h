@@ -7,6 +7,11 @@
 #include <QPixmap>
 #include <QGraphicsScene>
 
+#include <QSoundEffect>
+#include <QUrl>
+#include <QMediaPlayer>
+#include <QAudioOutput>
+
 // ============================================================
 //  Nivel_2 — Vista cenital, laberinto + sigilo
 //
@@ -24,6 +29,13 @@
 //    • El jugador debe llegar a la computadora (objetivo) sin ser atrapado
 //    • Si el robot toca al jugador → pierde una vida y respawnea
 // ============================================================
+
+struct ZonaOculta {
+    float x, y, w, h;
+};
+
+
+
 class Nivel_2 : public Nivel
 {
 public:
@@ -36,11 +48,6 @@ public:
     void inicializar(Personaje* p) override;
     void actualizar(float dt) override;
 
-    // void verificarDeteccion();   // Robot atrapa al jugador → daño
-    // void verificarVictoria();    // Jugador llega a la computadora
-
-
-
     // Getters de estado (para HUD externo)
     int   getTiempoRestante() const;
     bool  isCompletado()      const;
@@ -48,9 +55,57 @@ public:
 
 
     //para el escenario
+    void limpiarEscena();
     void setScene(QGraphicsScene* scene);
+    void    cargarSpriteObjetivo(const QPixmap& hoja,
+                                   int srcX, int srcY,
+                              int srcW, int srcH);
 
 private:
+
+    // ── Sonidos por evento ────────────────────────────────────────────────────
+    QSoundEffect sonidoDeteccion;   // robot entra en modo persecución
+    QSoundEffect sonidoHackeoLoop;  // loop mientras hackeas la computadora
+    QSoundEffect sonidoVictoria;    // hackeo completado
+    QSoundEffect sonidoDanio;
+
+    // ── Sistema de daño con invulnerabilidad ──────────────────────────────────
+    int   vidasN2;                    // vidas del nivel (independiente de Personaje)
+    int   vidasN2Max      = 4;        // máximo de vidas
+    float tiempoInvulnerable = 0.f;   // contador de iframes tras recibir daño
+    static constexpr float DURACION_INVULNERABLE = 1.5f;  // segundos sin poder ser dañado
+
+
+    // ── HUD ───────────────────────────────────────────────────────────────────
+    QGraphicsTextItem*              itemHUDTimer;
+    std::vector<QGraphicsEllipseItem*> itemsCorazones;
+
+
+    void actualizarHUD();
+
+
+
+    // seccion zona oculta:
+    std::vector<ZonaOculta>  zonasOcultas;
+    std::vector<QGraphicsRectItem*> itemsZonas;     // visuales oscuros
+    bool jugadorEnSombra() const;
+
+    // ── Sonidos fondo ────────────────────────────────────────────────────
+    QMediaPlayer musicaFondo;
+    QAudioOutput audioFondo;
+
+    // ── Lógica del hackeo ─────────────────────────────────────────────────────
+    float tiempoHackeo     = 0.f;
+    float tiempoHackeoMax  = 3.f;   // segundos para completar (ajustable)
+    bool  haciendoHackeo   = false;
+
+    // ── Control de cambios de estado para el sonido de detección ─────────────
+    std::vector<EstadoAgente> estadosAnteriores;
+
+
+
+
+
     // Posición del objetivo (computadora a apagar)
     float objetivoX;
     float objetivoY;
@@ -71,9 +126,9 @@ private:
 
 
     // Ítems visuales (propiedad de la escena, no los borramos)
-    QList<QGraphicsRectItem*>    itemsParedes;    ///< Rectángulos de las paredes
-    QGraphicsEllipseItem*        itemObjetivo;    ///< Círculo del objetivo
-    QList<QGraphicsEllipseItem*> itemsDeteccion;  ///< Círculos de detección por robot
+    std::vector<QGraphicsItem*>    itemsParedes;    ///< Rectángulos de las paredes
+    QGraphicsPixmapItem* itemObjetivo;
+    std::vector<QGraphicsEllipseItem*> itemsDeteccion;  ///< Círculos de detección por robot
 
 
     void generarLaberinto();
@@ -84,7 +139,8 @@ private:
 
     void resolverColisiones();    ///< Jugador ↔ paredes
     void verificarDeteccion();    ///< Robot alcanza al jugador → daño + respawn
-    void verificarVictoria();     ///< Jugador llega a la computadora
+    void verificarVictoria(float dt);
+
 
     void agregarItemsEscena();    ///< Crea y añade todos los QGraphicsItem a la escena
     void actualizarCirculosDeteccion(); ///< Mueve y recolorea los círculos cada tick

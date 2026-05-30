@@ -84,6 +84,7 @@ public:
     //---------Setters------------
     void setPosicion(float nx, float ny);
     void setVelocidad(float vx, float vy);
+    void setItemNull() { itemGrafico = nullptr; }
 
 
     bool estaActiva() const ;

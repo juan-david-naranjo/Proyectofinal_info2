@@ -51,11 +51,15 @@ public:
 
     // ── Ciclo del agente ─────────────────────────────────────
     void percibir(float jugadorX, float jugadorY) override;
-    void razonar()  override;
+    void razonar()  override{ razonar(false);}
+    void razonar(bool jugadorOculto = false) ;
     void actuar(float dt) override;
 
     // Método completo que el nivel llama cada tick
-    void tick(float jugadorX, float jugadorY, float dt);
+    // void tick(float jugadorX, float jugadorY, float dt);
+
+    void tick(float jx, float jy, float dt, bool jugadorOculto = false);
+
 
     // Actualiza lista de waypoints con la última posición vista
     void actualizarWaypoints();
@@ -68,8 +72,18 @@ public:
     float        getRadioDeteccion()const { return radioDeteccion; }
 
 
-    // [NUEVO] — Asigna el ítem gráfico creado por el nivel en la escena
+
     void setItemGrafico(QGraphicsPixmapItem* item) { itemGrafico = item; }
+
+    QPixmap getPrimerFrame() const
+    {
+         if (!framesPatrullaje.empty()) return framesPatrullaje.at(0);
+         return QPixmap();
+    }
+
+    void cargarSprites(const QPixmap& sheet);
+
+
 
     ~RobotSeguridad() override = default;
 
@@ -78,6 +92,33 @@ private:
     float radioDesenganche;
     float velPatrulla;
     float velPersecucion;
+
+    // Miembros privados nuevos (sección private)
+    std::vector<QPixmap> framesPatrullaje;
+    std::vector<QPixmap> framesAlert;
+     // QVector<QPixmap> framesPatrullaje;
+     // QVector<QPixmap> framesAlert;
+     int   frameActual            = 0;
+     float tiempoFrame            = 0.f;
+     float duracionFramePatrullaje;
+     float duracionFrameAlert;
+
+     // ── Detección de atasco ───────────────────────────────────
+     float   posXAnterior  = 0.f;
+     float   posYAnterior  = 0.f;
+     float   tiempoStuck   = 0.f;
+     bool    tieneDesvio   = false;
+     Punto2D puntoDesvio   = {0.f, 0.f};
+     int     ladoDesvio    = 1;          // alterna +1/-1 para no girar siempre igual
+
+     static constexpr float UMBRAL_STUCK = 0.35f;  // segundos sin moverse → atascado
+     static constexpr float DIST_DESVIO  = 90.f;   // distancia del punto de rodeo
+     static constexpr float RADIO_LLEGADA_DESVIO = 25.f;
+
+
+
+
+
 
     // Waypoints de patrulla (aprendizaje: se añaden posiciones del jugador)
     std::vector<Punto2D> waypoints;

@@ -4,7 +4,7 @@
 #include <cmath>
 
 // ============================================================
-//  Constructor
+//  Constructor base
 // ============================================================
 Personaje::Personaje() : EntidadJuego(0, 0)
 {
@@ -34,16 +34,20 @@ Personaje::Personaje() : EntidadJuego(0, 0)
     yMasAlta         = 0.f;
 }
 
+// ============================================================
+//  Constructor con posición — carga sprites nivel 1 por defecto
+// ============================================================
 Personaje::Personaje(float X, float Y) : Personaje()
 {
     x = X; y = Y;
     yMasAlta = Y;
     itemGrafico = new QGraphicsPixmapItem();
+
     cargarSpritesNivel1();
 
     QPixmap inicial = n1_framesIdle.isEmpty()
-                          ? []{ QPixmap p(70,70); p.fill(Qt::red); return p; }()
-                          : n1_framesIdle[0];
+        ? []{ QPixmap p(70,70); p.fill(Qt::red); return p; }()
+        : n1_framesIdle[0];
     itemGrafico->setPixmap(inicial);
     itemGrafico->setPos(x, y);
 }
@@ -71,8 +75,38 @@ void Personaje::saltar()
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
-void Personaje::activarBoost()  { boostActivo=true; tiempoBoost=DURACION_BOOST; }
-void Personaje::activarDesliz() { if(enSuelo&&!deslizando){deslizando=true;tiempoDesliz=DURACION_DESLIZ_MAX;} }
+// ============================================================
+//  Boost / Deslizamiento
+// ============================================================
+void Personaje::activarBoost()
+{
+    boostActivo = true;
+    tiempoBoost = DURACION_BOOST;
+}
+
+void Personaje::activarDesliz()
+{
+    // Nivel 1: solo si está en suelo
+    if (enSuelo && !deslizando) {
+        deslizando   = true;
+        tiempoDesliz = DURACION_DESLIZ_MAX;
+    }
+}
+
+void Personaje::activarDeslizNivel2()
+{
+    // Nivel 2: en movimiento, con impulso en la dirección actual
+    float velTotal = std::sqrt(Vx*Vx + Vy*Vy);
+    if (velTotal > velMax * 0.3f && !deslizando) {
+        deslizando   = true;
+        tiempoDesliz = DURACION_DESLIZ_MAX;
+        float nx = Vx / velTotal;
+        float ny = Vy / velTotal;
+        Vx = nx * velMax * 1.5f;
+        Vy = ny * velMax * 1.5f;
+    }
+}
+
 void Personaje::actualizar(float dt) { actualizarNivel2(dt); }
 
 // ============================================================
@@ -81,8 +115,7 @@ void Personaje::actualizar(float dt) { actualizarNivel2(dt); }
 void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 {
     // ── Caída final: bloquear física, solo animar ─────────────
-    if (enCaidaFinal)
-    {
+    if (enCaidaFinal) {
         tickAnimacion(dt, n1_framesCaidaFinal, false);
         if (itemGrafico) itemGrafico->setPos(x, y);
         return;
@@ -98,7 +131,7 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     else
         Vx = velHoriz;
 
-    // ── Viento ────────────────────────────────────────────────
+    // ── Viento (solo en el aire) ──────────────────────────────
     if (!enSuelo) {
         GestorFisicas::aplicarViento(Vx, tiempoTotal, dt);
         tiempoViento += dt;
@@ -115,10 +148,8 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 
     // ── Estado de animación ───────────────────────────────────
     EstadoAnim nuevo;
-    if (!enSuelo && estadoAnim == EstadoAnim::SALTANDO && Vy < 0.f)
+    if (!enSuelo)
         nuevo = EstadoAnim::SALTANDO;
-    else if (!enSuelo)
-        nuevo = EstadoAnim::SALTANDO;   // en el aire = frame salto
     else if (std::abs(Vx) > 10.f)
         nuevo = EstadoAnim::CORRIENDO;
     else
@@ -127,14 +158,13 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     if (nuevo != estadoAnim) { estadoAnim=nuevo; frameActual=0; tiempoFrame=0.f; }
 
     QVector<QPixmap>* frames = nullptr;
-    bool loop = true;
     switch (estadoAnim) {
     case EstadoAnim::IDLE:      frames = &n1_framesIdle;      break;
     case EstadoAnim::CORRIENDO: frames = &n1_framesCorriendo; break;
     case EstadoAnim::SALTANDO:  frames = &n1_framesSaltando;  break;
     default:                    frames = &n1_framesIdle;      break;
     }
-    if (frames) tickAnimacion(dt, *frames, loop);
+    if (frames) tickAnimacion(dt, *frames, true);
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
@@ -143,46 +173,88 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 // ============================================================
 void Personaje::actualizarNivel2(float dt)
 {
-    float ve = boostActivo ? velMax*MULTIPLICADOR_BOOST : velMax;
+    float ve = boostActivo ? velMax * MULTIPLICADOR_BOOST : velMax;
+
     if (deslizando) {
-        GestorFisicas::aplicarInercia(Vx,0.f,dt);
-        GestorFisicas::aplicarInercia(Vy,0.f,dt);
-        tiempoDesliz-=dt; if(tiempoDesliz<=0.f){deslizando=false;tiempoDesliz=0.f;}
+        GestorFisicas::aplicarInercia(Vx, 0.f, dt);
+        GestorFisicas::aplicarInercia(Vy, 0.f, dt);
+        tiempoDesliz -= dt;
+        if (tiempoDesliz <= 0.f) { deslizando = false; tiempoDesliz = 0.f; }
     } else {
-        float vox=0.f,voy=0.f;
-        if(keys[0]){vox=-ve;miraDerecha=false;}
-        if(keys[1]){vox= ve;miraDerecha=true; }
-        if(keys[2]) voy=-ve;
-        if(keys[3]) voy= ve;
-        GestorFisicas::aplicarInercia(Vx,vox,dt);
-        GestorFisicas::aplicarInercia(Vy,voy,dt);
+        float vox=0.f, voy=0.f;
+        if (keys[0]) { vox = -ve; miraDerecha = false; }
+        if (keys[1]) { vox =  ve; miraDerecha = true;  }
+        if (keys[2]) voy = -ve;
+        if (keys[3]) voy =  ve;
+        GestorFisicas::aplicarInercia(Vx, vox, dt);
+        GestorFisicas::aplicarInercia(Vy, voy, dt);
     }
-    x+=Vx*dt; y+=Vy*dt;
-    float vt=std::sqrt(Vx*Vx+Vy*Vy);
-    factorSigilo=(vt<velMax*0.4f)?0.5f:1.f;
-    if(boostActivo){tiempoBoost-=dt;if(tiempoBoost<=0.f){boostActivo=false;tiempoBoost=0.f;}}
 
+    x += Vx * dt;
+    y += Vy * dt;
+
+    float vt = std::sqrt(Vx*Vx + Vy*Vy);
+    factorSigilo = (vt < velMax * 0.4f) ? 0.5f : 1.f;
+
+    if (boostActivo) {
+        tiempoBoost -= dt;
+        if (tiempoBoost <= 0.f) { boostActivo = false; tiempoBoost = 0.f; }
+    }
+
+    // ── Estado de animación nivel 2 ───────────────────────────
     EstadoAnim nuevo;
-    if(boostActivo)                                  nuevo=EstadoAnim::BOOST;
-    else if(deslizando)                              nuevo=EstadoAnim::DESLIZANDO;
-    else if(std::abs(Vx)>10.f||std::abs(Vy)>10.f)  nuevo=EstadoAnim::CORRIENDO;
-    else                                             nuevo=EstadoAnim::IDLE;
-    if(nuevo!=estadoAnim){estadoAnim=nuevo;frameActual=0;tiempoFrame=0.f;}
-
-    QVector<QPixmap>* frames=nullptr;
-    switch(estadoAnim){
-    case EstadoAnim::IDLE:       frames=&framesIdle;      break;
-    case EstadoAnim::CORRIENDO:  frames=&framesCorriendo; break;
-    case EstadoAnim::DESLIZANDO: frames=&framesDeslizando;break;
-    case EstadoAnim::BOOST:      frames=&framesBoost;     break;
-    default:                     frames=&framesIdle;      break;
+    if (deslizando)
+        nuevo = EstadoAnim::DESLIZANDO;
+    else if (vt > 10.f) {
+        if (std::abs(Vy) > std::abs(Vx)) {
+            nuevo = (Vy < 0.f) ? EstadoAnim::CORRIENDO_ARRIBA
+                                : EstadoAnim::CORRIENDO_ABAJO;
+        } else {
+            nuevo = EstadoAnim::CORRIENDO;
+        }
+    } else {
+        nuevo = EstadoAnim::IDLE;
     }
-    if(frames) tickAnimacion(dt,*frames,true);
-    if(itemGrafico) itemGrafico->setPos(x,y);
+
+    if (nuevo != estadoAnim) { frameActual=0; tiempoFrame=0.f; }
+    estadoAnim = nuevo;
+
+    std::vector<QPixmap>* frames = nullptr;
+    float multAnim = 1.0f;
+
+    switch (estadoAnim) {
+    case EstadoAnim::IDLE:
+        frames = &framesIdle;
+        break;
+    case EstadoAnim::CORRIENDO:
+        frames = &framesCorriendo;
+        break;
+    case EstadoAnim::CORRIENDO_ARRIBA:
+        frames   = &framesUprun;
+        multAnim = boostActivo ? 0.4f : 0.7f;
+        break;
+    case EstadoAnim::CORRIENDO_ABAJO:
+        frames   = &framesDownrun;
+        multAnim = boostActivo ? 0.4f : 0.7f;
+        break;
+    case EstadoAnim::DESLIZANDO:
+        frames = &framesDeslizando;
+        break;
+    default:
+        frames = &framesIdle;
+        break;
+    }
+
+    // Movimiento vertical dominante → animación más lenta
+    if (vt > 10.f && std::abs(Vy) > std::abs(Vx))
+        multAnim = 1.8f;
+
+    if (frames) tickAnimacion(dt, *frames, true, multAnim);
+    if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
 // ============================================================
-//  tickAnimacion
+//  tickAnimacion — Nivel 1 (QVector<QPixmap>)
 // ============================================================
 void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
 {
@@ -191,36 +263,63 @@ void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
     if (tiempoFrame >= duracionFrame) {
         tiempoFrame = 0.f;
         frameActual = loop
-                          ? (frameActual+1) % frames.size()
-                          : std::min(frameActual+1, (int)frames.size()-1);
+            ? (frameActual + 1) % frames.size()
+            : std::min(frameActual + 1, (int)frames.size() - 1);
     }
     QPixmap frame = frames[frameActual];
     if (!miraDerecha)
-        frame = frame.transformed(QTransform().scale(-1,1));
+        frame = frame.transformed(QTransform().scale(-1, 1));
+    itemGrafico->setPixmap(frame);
+}
+
+// ============================================================
+//  tickAnimacion — Nivel 2 (std::vector<QPixmap> + multVelocidad)
+//  multVelocidad > 1 → cada frame dura más → animación más lenta
+//  Aplica tinte cian si el boost está activo.
+// ============================================================
+void Personaje::tickAnimacion(float dt, std::vector<QPixmap>& frames,
+                              bool loop, float multVelocidad)
+{
+    if (frames.empty() || !itemGrafico) return;
+
+    tiempoFrame += dt;
+    float duracionEfectiva = duracionFrame * multVelocidad;
+
+    if (tiempoFrame >= duracionEfectiva) {
+        tiempoFrame = 0.f;
+        frameActual = loop
+            ? (frameActual + 1) % (int)frames.size()
+            : std::min(frameActual + 1, (int)frames.size() - 1);
+    }
+
+    QPixmap frame = frames[frameActual];
+
+    if (!miraDerecha)
+        frame = frame.transformed(QTransform().scale(-1, 1));
+
+    // Tinte cian semitransparente cuando el boost está activo
+    if (boostActivo) {
+        QPixmap tinted(frame.size());
+        tinted.fill(Qt::transparent);
+        QPainter p(&tinted);
+        p.drawPixmap(0, 0, frame);
+        p.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        p.fillRect(frame.rect(), QColor(0, 200, 255, 60));
+        p.end();
+        frame = tinted;
+    }
+
     itemGrafico->setPixmap(frame);
 }
 
 // ============================================================
 //  cargarSpritesNivel1
+//  Spritesheet: 669x373 px — fondo negro (0,0,0)
 //
-//  Spritesheet: 669 x 373 px — fondo negro
-//
-//  FILA 1 (y=44-109, h=65) — SPRINT/IDLE: 8 grupos
-//    Grupo 1:  x=17  w=36  → IDLE (personaje estático)
-//    Grupo 2:  x=86  w=42  → CORRER frame 1
-//    Grupo 3:  x=148 w=44  → CORRER frame 2
-//    Grupos 4-8: no usados (boost, omitidos)
-//
-//  FILA 2 (y=110-208, h=98) — SALTO: 9 grupos
-//    Grupos 1-9: frames del salto completo (impulso → arco → caída)
-//    Grupo 2 (x=70-243) contiene múltiples sub-frames pegados
-//    Se dividen en 5 frames uniformes para el arco de salto
-//
-//  FILA 3 (y=214-280) — VIENTO: OMITIDA
-//
-//  FILA 4 (y=294-353, h=59) — CAÍDA FINAL (antes de respawn):
-//    Solo se activa si el personaje cae ≥4 plataformas hacia abajo
-//    Grupos 1-3: x=18-247 (3 frames, excluye obstáculos/UI)
+//  Fila 1 (y=44 h=65):  IDLE (1f) + CORRER (7f)
+//  Fila 2 (y=110 h=98): SALTO completo (12f)
+//  Fila 3 (y=214 h=66): VIENTO — OMITIDA
+//  Fila 4 (y=294 h=59): CAÍDA FINAL (3f)
 // ============================================================
 void Personaje::cargarSpritesNivel1()
 {
@@ -231,12 +330,10 @@ void Personaje::cargarSpritesNivel1()
     }
     qDebug() << "Spritesheet N1:" << sheet.width() << "x" << sheet.height();
 
-    const int TW = static_cast<int>(ANCHO);  // 70
-    const int TH = static_cast<int>(ALTO);   // 70
+    const int TW = static_cast<int>(ANCHO);
+    const int TH = static_cast<int>(ALTO);
 
-    // Recorta un frame del sheet, elimina fondo negro y escala a TW x TH
-    auto extraer = [&](int x1, int y1, int w, int h) -> QPixmap
-    {
+    auto extraer = [&](int x1, int y1, int w, int h) -> QPixmap {
         if (x1<0||y1<0||x1+w>sheet.width()||y1+h>sheet.height()) {
             QPixmap ph(TW,TH); ph.fill(Qt::transparent); return ph;
         }
@@ -249,66 +346,47 @@ void Personaje::cargarSpritesNivel1()
                     img.setPixelColor(px,py,Qt::transparent);
             }
         return QPixmap::fromImage(img)
-            .scaled(TW,TH,Qt::KeepAspectRatio,
-                    Qt::SmoothTransformation);
+            .scaled(TW,TH,Qt::KeepAspectRatio,Qt::SmoothTransformation);
     };
 
-    // ── FILA 1 (y=44 h=65): SPRINT ───────────────────────────
-    // 8 grupos detectados:
-    // Grupo 1: x=17  w=36  → IDLE (estático)
-    // Grupos 2-8: x=86,148,206,269,346,402,490 → frames corriendo
+    // IDLE
     n1_framesIdle.clear();
     n1_framesIdle.append(extraer(17, 44, 36, 65));
 
+    // CORRER (7 frames)
     n1_framesCorriendo.clear();
-    n1_framesCorriendo.append(extraer( 86, 44,  42, 65));
-    n1_framesCorriendo.append(extraer(148, 44,  44, 65));
-    n1_framesCorriendo.append(extraer(206, 44,  54, 65));
-    n1_framesCorriendo.append(extraer(269, 44,  61, 65));
-    n1_framesCorriendo.append(extraer(346, 44,  55, 65));
-    n1_framesCorriendo.append(extraer(402, 44,  64, 65));
-    n1_framesCorriendo.append(extraer(490, 44,  51, 65));
+    n1_framesCorriendo.append(extraer( 86, 44, 42, 65));
+    n1_framesCorriendo.append(extraer(148, 44, 44, 65));
+    n1_framesCorriendo.append(extraer(206, 44, 54, 65));
+    n1_framesCorriendo.append(extraer(269, 44, 61, 65));
+    n1_framesCorriendo.append(extraer(346, 44, 55, 65));
+    n1_framesCorriendo.append(extraer(402, 44, 64, 65));
+    n1_framesCorriendo.append(extraer(490, 44, 51, 65));
 
-    // ── FILA 2 (y=110 h=98): SALTO ───────────────────────────
-    // 9 grupos detectados:
-    // Grupo 1: x=18   w=38  → preparación
-    // Grupo 2: x=70   w=173 → arco (pegados, dividir en 3x57)
-    // Grupo 3: x=251  w=40  → apex
-    // Grupo 4: x=322  w=33  → caída f1
-    // Grupo 5: x=371  w=34  → caída f2
-    // Grupo 6: x=418  w=38  → caída f3
-    // Grupo 7: x=462  w=89  → doble salto flash (dividir en 2x44)
-    // Grupo 8: x=552  w=43  → post doble salto
-    // Grupo 9: x=605  w=39  → aterrizaje
+    // SALTO (12 frames)
     n1_framesSaltando.clear();
-    n1_framesSaltando.append(extraer( 18, 110, 38, 98));  // prep
-    n1_framesSaltando.append(extraer( 70, 110, 57, 98));  // arco f1
-    n1_framesSaltando.append(extraer(127, 110, 58, 98));  // arco f2
-    n1_framesSaltando.append(extraer(185, 110, 58, 98));  // arco f3
-    n1_framesSaltando.append(extraer(251, 110, 40, 98));  // apex
-    n1_framesSaltando.append(extraer(322, 110, 33, 98));  // caída f1
-    n1_framesSaltando.append(extraer(371, 110, 34, 98));  // caída f2
-    n1_framesSaltando.append(extraer(418, 110, 38, 98));  // caída f3
-    n1_framesSaltando.append(extraer(462, 110, 44, 98));  // doble f1
-    n1_framesSaltando.append(extraer(506, 110, 45, 98));  // doble f2
-    n1_framesSaltando.append(extraer(552, 110, 43, 98));  // post
-    n1_framesSaltando.append(extraer(605, 110, 39, 98));  // aterrizaje
+    n1_framesSaltando.append(extraer( 18, 110, 38, 98));
+    n1_framesSaltando.append(extraer( 70, 110, 57, 98));
+    n1_framesSaltando.append(extraer(127, 110, 58, 98));
+    n1_framesSaltando.append(extraer(185, 110, 58, 98));
+    n1_framesSaltando.append(extraer(251, 110, 40, 98));
+    n1_framesSaltando.append(extraer(322, 110, 33, 98));
+    n1_framesSaltando.append(extraer(371, 110, 34, 98));
+    n1_framesSaltando.append(extraer(418, 110, 38, 98));
+    n1_framesSaltando.append(extraer(462, 110, 44, 98));
+    n1_framesSaltando.append(extraer(506, 110, 45, 98));
+    n1_framesSaltando.append(extraer(552, 110, 43, 98));
+    n1_framesSaltando.append(extraer(605, 110, 39, 98));
 
-    // ── FILA 3 (y=214 h=66): VIENTO — OMITIDA ────────────────
-    n1_framesVientoCalda.clear();  // vacío hasta implementar ventilador
+    // VIENTO — OMITIDA
+    n1_framesVientoCalda.clear();
 
-    // ── FILA 4 (y=294 h=59): CAÍDA FINAL ─────────────────────
-    // Solo los 3 primeros grupos son del personaje.
-    // Grupos 4-7 son obstáculos/UI del nivel — ignorar.
-    // Grupo 1: x=18  w=60
-    // Grupo 2: x=96  w=60
-    // Grupo 3: x=180 w=67
+    // CAÍDA FINAL (3 frames del personaje, ignorar obstáculos/UI)
     n1_framesCaidaFinal.clear();
     n1_framesCaidaFinal.append(extraer( 18, 294, 60, 59));
     n1_framesCaidaFinal.append(extraer( 96, 294, 60, 59));
     n1_framesCaidaFinal.append(extraer(180, 294, 67, 59));
 
-    // ── Estado inicial ─────────────────────────────────────────
     estadoAnim    = EstadoAnim::IDLE;
     frameActual   = 0;
     tiempoFrame   = 0.f;
@@ -324,49 +402,80 @@ void Personaje::cargarSpritesNivel1()
 
 // ============================================================
 //  cargarSpritesNivel2
+//  Spritesheet: Sprites_kael_movimientos.png (nivel 2 real)
+//  Lambda con fw/fh/separacion explícitos (versión REMOTE)
 // ============================================================
 void Personaje::cargarSpritesNivel2()
 {
-    QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
-    if (sheet.isNull()) { qDebug()<<"ERROR: sprites nivel 2"; return; }
-    const int FW=70, FH=70;
-    QColor bg(0x31,0x4d,0x58);
-    auto recortar=[&](QVector<QPixmap>&dest,int ox,int oy,int n){
-        dest.clear();
-        for(int i=0;i<n;++i){
-            int sx=ox+i*(FW+8);
-            if(sx+FW<=sheet.width()&&oy+FH<=sheet.height())
-                dest.append(eliminarFondo(sheet.copy(sx,oy,FW,FH),bg,5));
-            else{QPixmap p(FW,FH);p.fill(Qt::transparent);dest.append(p);}
+    QPixmap sheet(":/Kael_nivel2/Sprites/Nivel2/Sprites_kael_movimientos.png");
+    if (sheet.isNull()) {
+        qDebug() << "ERROR: No se pudo cargar la hoja de sprites nivel 2.";
+        return;
+    }
+
+    auto recortar = [&](std::vector<QPixmap>& destino,
+                        int ox, int oy, int numFrames,
+                        int fw, int fh, int separacion = 10)
+    {
+        destino.clear();
+        for (int i = 0; i < numFrames; ++i) {
+            int xFinal = ox + i * (fw + separacion);
+            QPixmap frame;
+            if (xFinal + fw <= sheet.width() && oy + fh <= sheet.height()) {
+                frame = sheet.copy(xFinal, oy, fw, fh);
+            } else {
+                qDebug() << "WARN: frame" << i << "fuera de la imagen";
+                frame = QPixmap(fw, fh);
+                frame.fill(Qt::transparent);
+                destino.push_back(frame);
+                continue;
+            }
+            frame = eliminarFondo(frame, QColor(0x31, 0x4d, 0x58), 8);
+            frame = eliminarFondo(frame, QColor(0x0e, 0x15, 0x27), 8);
+            destino.push_back(frame);
         }
     };
-    recortar(framesIdle,       40, 136, 5);
-    recortar(framesCorriendo,  40, 136, 5);
-    recortar(framesDeslizando, 53, 335, 5);
-    recortar(framesBoost,      450,331, 2);
-    estadoAnim=EstadoAnim::IDLE; frameActual=0;
-    tiempoFrame=0.f; duracionFrame=0.1f; miraDerecha=true;
+
+    //            destino          ox   oy  frames  fw   fh   sep
+    recortar(framesIdle,           42, 140,    4,   93, 109,  10);
+    recortar(framesCorriendo,      45, 338,    8,   66,  86,  15);
+    recortar(framesDeslizando,     41, 516,    4,   89,  97,  10);
+    recortar(framesUprun,         725, 314,    9,   60, 105,  12);
+    recortar(framesDownrun,       320, 331,    2,   93, 109,  10);
+
+    estadoAnim    = EstadoAnim::IDLE;
+    frameActual   = 0;
+    tiempoFrame   = 0.f;
+    duracionFrame = 0.1f;
+    miraDerecha   = true;
+
+    if (itemGrafico && !framesIdle.empty()) {
+        itemGrafico->setPixmap(framesIdle.at(0));
+        itemGrafico->setTransformOriginPoint(
+            framesIdle.at(0).width()  / 2.0,
+            framesIdle.at(0).height() / 2.0);
+    }
 }
 
 // ============================================================
-//  eliminarFondo (nivel 2)
+//  eliminarFondo
 // ============================================================
 QPixmap Personaje::eliminarFondo(const QPixmap& src, QColor cf, int tol)
 {
-    QImage img=src.toImage().convertToFormat(QImage::Format_ARGB32);
-    for(int py=0;py<img.height();++py)
-        for(int px=0;px<img.width();++px){
-            QColor p=img.pixelColor(px,py);
-            if(std::abs(p.red()-cf.red())<=tol&&
-                std::abs(p.green()-cf.green())<=tol&&
-                std::abs(p.blue()-cf.blue())<=tol)
+    QImage img = src.toImage().convertToFormat(QImage::Format_ARGB32);
+    for (int py=0; py<img.height(); ++py)
+        for (int px=0; px<img.width(); ++px) {
+            QColor p = img.pixelColor(px,py);
+            if (std::abs(p.red()  -cf.red())  <=tol &&
+                std::abs(p.green()-cf.green())<=tol &&
+                std::abs(p.blue() -cf.blue()) <=tol)
                 img.setPixelColor(px,py,Qt::transparent);
         }
     return QPixmap::fromImage(img);
 }
 
 // ============================================================
-//  Caída final
+//  Caída final (nivel 1)
 // ============================================================
 void Personaje::activarCaidaFinal()
 {
@@ -385,18 +494,32 @@ bool Personaje::caidaFinalTerminada() const
 }
 
 // ============================================================
+//  Hitbox ajustable (nivel 2)
+// ============================================================
+void Personaje::setHitboxOffset(float offsetX, float offsetY,
+                                float anchoEfectivo, float altoEfectivo)
+{
+    hitboxOffsetX   = offsetX;
+    hitboxOffsetY   = offsetY;
+    hitboxAnchoReal = anchoEfectivo;
+    hitboxAltoReal  = altoEfectivo;
+    ANCHO           = anchoEfectivo;
+    ALTO            = altoEfectivo;
+}
+
+// ============================================================
 //  Colisión / reset
 // ============================================================
 void Personaje::aterrizarEnSuelo(float)
 {
-    Vy=0.f; enSuelo=true; saltosRestantes=2; tiempoViento=0.f;
-    // Registrar la Y más alta cuando toca suelo
+    Vy = 0.f; enSuelo = true; saltosRestantes = 2; tiempoViento = 0.f;
     yMasAlta = y;
-    if(itemGrafico) itemGrafico->setPos(x,y);
+    if (itemGrafico) itemGrafico->setPos(x, y);
 }
-void Personaje::despegarSuelo() { enSuelo=false; }
 
-void Personaje::recibirDanio(int n) { vidas-=n; if(vidas<0)vidas=0; }
+void Personaje::despegarSuelo() { enSuelo = false; }
+
+void Personaje::recibirDanio(int n) { vidas -= n; if (vidas<0) vidas=0; }
 
 void Personaje::resetearPosicion(float rx, float ry)
 {
@@ -405,9 +528,10 @@ void Personaje::resetearPosicion(float rx, float ry)
     tiempoViento=0.f; enCaidaFinal=false;
     yMasAlta=ry; plataformasCalda=0;
     estadoAnim=EstadoAnim::IDLE; frameActual=0;
-    if(itemGrafico) itemGrafico->setPos(x,y);
+    if (itemGrafico) itemGrafico->setPos(x,y);
 }
 
+// ── Getters ───────────────────────────────────────────────────
 int   Personaje::getVidas()        const { return vidas;        }
 float Personaje::getEnergia()      const { return energia;      }
 bool  Personaje::isEnSuelo()       const { return enSuelo;      }

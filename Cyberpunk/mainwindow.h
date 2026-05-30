@@ -3,46 +3,37 @@
 
 #include <QMainWindow>
 #include <QGraphicsScene>
-#include <QTimer>
-#include <QElapsedTimer>
-#include "personaje.h"
-#include "nivel_1.h"
-#include "nivel_2.h"
+#include "gamemanager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+// ============================================================
+//  MainWindow — responsabilidad única: ser la ventana
+//
+//  No sabe nada del juego. Solo:
+//    1. Crea la escena Qt
+//    2. Crea GameManager y llama iniciarJuego()
+//    3. Reenvía eventos de teclado y resize a GameManager
+// ============================================================
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
 protected:
-    void keyPressEvent(QKeyEvent* event)   override;
-    void keyReleaseEvent(QKeyEvent* event) override;
-    void resizeEvent(QResizeEvent* event)  override;
-
-private slots:
-    void gameTick();
+    void keyPressEvent  (QKeyEvent*   event) override;
+    void keyReleaseEvent(QKeyEvent*   event) override;
+    void resizeEvent    (QResizeEvent* event) override;
 
 private:
     Ui::MainWindow* ui;
-
-    Personaje*      jugador;
     QGraphicsScene* scena;
-    QTimer*         timer;
-    QElapsedTimer   reloj;
-
-    Nivel_1*        nivel1;
-    Nivel_2*        nivel2;
-    int             nivelActual;
-
-    static constexpr int FPS_OBJETIVO = 60;
-    static constexpr int MS_POR_TICK  = 1000 / FPS_OBJETIVO;
+    GameManager*    gameManager;
 };
 
 #endif // MAINWINDOW_H

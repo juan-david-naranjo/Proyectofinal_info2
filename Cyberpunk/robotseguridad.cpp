@@ -16,6 +16,10 @@ RobotSeguridad::RobotSeguridad(float px, float py,
     , velPatrulla(vPatrulla)
     , velPersecucion(vPersecucion)
     , waypoints(wps)
+    , frameActual(0)
+    , tiempoFrame(0.f)
+    , duracionFramePatrullaje(0.1f)   // 10 fps en patrullaje
+    , duracionFrameAlert(0.15f)       // 6-7 fps en alerta (más dramático)
 {
     // El ítem gráfico lo asigna el nivel
     itemGrafico = nullptr;
@@ -24,6 +28,127 @@ RobotSeguridad::RobotSeguridad(float px, float py,
     if (waypoints.empty())
         waypoints.push_back(Punto2D(px, py));
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  cargarSprites
+//  Recibe la QPixmap ya cargada (misma hoja que el personaje u otra).
+//  Elimina los fondos de cada grupo de animación de forma independiente.
+// ════════════════════════════════════════════════════════════════════════════
+void RobotSeguridad::cargarSprites(const QPixmap& sheet)
+{
+    if (sheet.isNull()) return;
+
+    // ── Helper: elimina un color de fondo con tolerancia ─────────────────────
+    auto quitarFondo = [](const QPixmap& src, QColor fondo, int tol) -> QPixmap
+    {
+        QImage img = src.toImage().convertToFormat(QImage::Format_ARGB32);
+        const int r = fondo.red(), g = fondo.green(), b = fondo.blue();
+
+        for (int py = 0; py < img.height(); py++)
+            for (int px = 0; px < img.width(); px++)
+            {
+                QColor p = img.pixelColor(px, py);
+                if (std::abs(p.red()   - r) <= tol &&
+                    std::abs(p.green() - g) <= tol &&
+                    std::abs(p.blue()  - b) <= tol)
+                    img.setPixelColor(px, py, Qt::transparent);
+            }
+        return QPixmap::fromImage(img);
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  ANIMACIÓN DE PATRULLAJE (estado normal, sin detectar al jugador)
+    //
+    //  8 frames · origen (723, 135) · 71 × 70 px · separación 11 px
+    //  Fondo: #2f4b56
+    // ════════════════════════════════════════════════════════════════════════
+    framesPatrullaje.clear();
+    {
+        const int ox  = 723, oy = 135;
+        const int fw  = 71,  fh = 70;
+        const int sep = 11;
+        const int num = 8;
+        const QColor bg(0x2f, 0x4b, 0x56);
+
+        for (int i = 0; i < num; i++)
+        {
+            int x = ox + i * (fw + sep);
+            if (x + fw > sheet.width() || oy + fh > sheet.height())
+            {
+                QPixmap ph(fw, fh);
+                ph.fill(Qt::transparent);
+                framesPatrullaje.push_back(ph);
+                continue;
+            }
+            QPixmap frame = sheet.copy(x, oy, fw, fh);
+            framesPatrullaje.push_back(quitarFondo(frame, bg, 10));
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  ANIMACIÓN DE ALERTA / PERSECUCIÓN (robot detecta al jugador)
+    //
+    //  3 frames en posiciones irregulares dentro de la hoja:
+    //
+    //    Frame 0 → (791, 295)  251 × 78  fondo #0e1528
+    //    Frame 1 → (953, 392)   77 × 79  (mismo fondo que frame 0)
+    //    Frame 2 → (1036, 328)  79 × 102 fondo #0f172a
+    //
+    //  Al tener tamaños distintos se escalan al tamaño del frame 0 para
+    //  que la transición no cambie el tamaño visual del robot en pantalla.
+    // ════════════════════════════════════════════════════════════════════════
+    framesAlert.clear();
+    {
+        const QColor bg0(0x0e, 0x15, 0x28);
+        const QColor bg2(0x0f, 0x17, 0x2a);
+
+        // Tamaño de referencia: el del frame más pequeño (77 × 78 aprox.)
+        // Lo normalizamos al tamaño de los frames de patrullaje (71 × 70).
+        const int refW = 71, refH = 70;
+
+        struct AlertFrame { int x, y, w, h; QColor bg; };
+        static const AlertFrame aFrames[] = {
+                                             { 791, 295, 251, 78,  bg0 },
+                                             { 953, 392,  77, 79,  bg0 },
+                                             {1036, 328,  79, 102, bg2 },
+                                             };
+
+        for (const auto& af : aFrames)
+        {
+            QPixmap raw;
+            if (af.x + af.w <= sheet.width() && af.y + af.h <= sheet.height())
+                raw = sheet.copy(af.x, af.y, af.w, af.h);
+            else
+            {
+                raw = QPixmap(af.w, af.h);
+                raw.fill(Qt::transparent);
+            }
+
+            QPixmap limpio = quitarFondo(raw, af.bg, 10);
+
+            // Escalar al tamaño de referencia para animación uniforme
+            framesAlert.push_back(
+                limpio.scaled(refW, refH, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+                );
+        }
+    }
+
+    // ── Aplicar primer frame y pivote de rotación en el centro ───────────────
+    if (itemGrafico && !framesPatrullaje.empty())
+    {
+        const QPixmap& f0 = framesPatrullaje.at(0);
+        itemGrafico->setPixmap(f0);
+        itemGrafico->setTransformOriginPoint(f0.width() / 2.0, f0.height() / 2.0);
+    }
+}
+
+
+
+
+
+
+
+
 
 // ── PERCIBIR ─────────────────────────────────────────────────────────────────
 // Calcula la distancia al jugador y actualiza la posición conocida.
@@ -43,36 +168,70 @@ float RobotSeguridad::calcularDistancia() const
 
 // ── RAZONAR ──────────────────────────────────────────────────────────────────
 // Evalúa el estado actual y decide la transición.
-void RobotSeguridad::razonar()
+// void RobotSeguridad::razonar()
+// {
+//     switch (estado)
+//     {
+//     case EstadoAgente::PATRULLAJE:
+//         // Transición a PERSECUCION si el jugador entra en el radio
+//         if (GestorFisicas::colisionCirculo(x, y,
+//                                            jugadorPosX, jugadorPosY,
+//                                            radioDeteccion))
+//         {
+//             estado = EstadoAgente::PERSECUCION;
+//             tiempoPersecucion = 0.f;
+//             // Guardar posición en historial (aprendizaje)
+//             actualizarWaypoints();
+//         }
+//         break;
+
+//     case EstadoAgente::PERSECUCION:
+//         // Solo puede volver a patrullaje si pasó el tiempo mínimo Y
+//         // el jugador salió del radio de desenganche
+//         if (tiempoPersecucion >= DURACION_MIN_PERSECUCION &&
+//             !GestorFisicas::colisionCirculo(x, y,
+//                                             jugadorPosX, jugadorPosY,
+//                                             radioDesenganche))
+//         {
+//             estado = EstadoAgente::PATRULLAJE;
+//             // El próximo waypoint será la última posición guardada
+//         }
+//         break;
+//     }
+// }
+
+
+void RobotSeguridad::razonar(bool jugadorOculto)
 {
+     //qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
     switch (estado)
     {
     case EstadoAgente::PATRULLAJE:
-        // Transición a PERSECUCION si el jugador entra en el radio
-        if (GestorFisicas::colisionCirculo(x, y,
+        // Si el jugador está oculto, el robot no puede detectarlo
+        if (!jugadorOculto &&
+            GestorFisicas::colisionCirculo(x, y,
                                            jugadorPosX, jugadorPosY,
                                            radioDeteccion))
         {
             estado = EstadoAgente::PERSECUCION;
             tiempoPersecucion = 0.f;
-            // Guardar posición en historial (aprendizaje)
             actualizarWaypoints();
         }
         break;
 
     case EstadoAgente::PERSECUCION:
-        // Solo puede volver a patrullaje si pasó el tiempo mínimo Y
-        // el jugador salió del radio de desenganche
+
+        // Desenganche normal por distancia
         if (tiempoPersecucion >= DURACION_MIN_PERSECUCION &&
             !GestorFisicas::colisionCirculo(x, y,
                                             jugadorPosX, jugadorPosY,
                                             radioDesenganche))
         {
             estado = EstadoAgente::PATRULLAJE;
-            // El próximo waypoint será la última posición guardada
         }
         break;
     }
+
 }
 
 // ── ACTUAR ───────────────────────────────────────────────────────────────────
@@ -100,21 +259,88 @@ void RobotSeguridad::actuar(float dt)
         }
         break;
     }
-
     case EstadoAgente::PERSECUCION:
     {
         tiempoPersecucion += dt;
-        // Guardar la última posición vista (aprendizaje continuo)
+
+        // Guardar historial de posición vista
         if (historial.empty() ||
             std::abs(jugadorPosX - historial.back().x) > 20.f ||
             std::abs(jugadorPosY - historial.back().y) > 20.f)
         {
             historial.push_back(Punto2D(jugadorPosX, jugadorPosY));
         }
-        // Perseguir con velocidad aumentada
-        moverHacia(jugadorPosX, jugadorPosY, dt);
+
+        // ── Detección de atasco ───────────────────────────────
+        float dxMov = x - posXAnterior;
+        float dyMov = y - posYAnterior;
+        float movimiento = std::sqrt(dxMov*dxMov + dyMov*dyMov);
+
+        // Umbral normalizado a 60fps para que dt no afecte
+        if (movimiento < 3.f * dt * 60.f)
+            tiempoStuck += dt;
+        else
+            tiempoStuck = 0.f;
+
+        posXAnterior = x;
+        posYAnterior = y;
+
+        // ── Si llegó al punto de desvío, cancelarlo ───────────
+        if (tieneDesvio)
+        {
+            float dxD = puntoDesvio.x - x;
+            float dyD = puntoDesvio.y - y;
+            if (std::sqrt(dxD*dxD + dyD*dyD) < RADIO_LLEGADA_DESVIO)
+                tieneDesvio = false;
+        }
+
+        // ── Generar desvío si está atascado ───────────────────
+        if (tiempoStuck >= UMBRAL_STUCK)
+        {
+            float dxJ = jugadorPosX - x;
+            float dyJ = jugadorPosY - y;
+            float dist = std::sqrt(dxJ*dxJ + dyJ*dyJ);
+
+            if (dist > 1.f)
+            {
+                // Dirección normalizada hacia el jugador
+                float nx =  dxJ / dist;
+                float ny =  dyJ / dist;
+
+                // Perpendicular: rotar 90° según ladoDesvio
+                float px = -ny * ladoDesvio;
+                float py =  nx * ladoDesvio;
+
+                puntoDesvio.x = x + px * DIST_DESVIO;
+                puntoDesvio.y = y + py * DIST_DESVIO;
+                tieneDesvio   = true;
+                tiempoStuck   = 0.f;
+                ladoDesvio   *= -1;  // próximo atasco gira al lado contrario
+            }
+        }
+
+        // ── Moverse al desvío o directo al jugador ────────────
+        if (tieneDesvio)
+            moverHacia(puntoDesvio.x, puntoDesvio.y, dt);
+        else
+            moverHacia(jugadorPosX, jugadorPosY, dt);
+
         break;
     }
+    // case EstadoAgente::PERSECUCION:
+    // {
+    //     tiempoPersecucion += dt;
+    //     // Guardar la última posición vista (aprendizaje continuo)
+    //     if (historial.empty() ||
+    //         std::abs(jugadorPosX - historial.back().x) > 20.f ||
+    //         std::abs(jugadorPosY - historial.back().y) > 20.f)
+    //     {
+    //         historial.push_back(Punto2D(jugadorPosX, jugadorPosY));
+    //     }
+    //     // Perseguir con velocidad aumentada
+    //     moverHacia(jugadorPosX, jugadorPosY, dt);
+    //     break;
+    // }
     }
 
     // Sincronizar sprite
@@ -123,12 +349,20 @@ void RobotSeguridad::actuar(float dt)
 }
 
 // ── TICK (método completo para el nivel) ─────────────────────────────────────
-void RobotSeguridad::tick(float jx, float jy, float dt)
+// void RobotSeguridad::tick(float jx, float jy, float dt)
+// {
+//     percibir(jx, jy);
+//     razonar();
+//     actuar(dt);
+// }
+
+void RobotSeguridad::tick(float jx, float jy, float dt, bool jugadorOculto)
 {
     percibir(jx, jy);
-    razonar();
+    razonar(jugadorOculto);
     actuar(dt);
 }
+
 
 // ── APRENDIZAJE: actualizar waypoints ────────────────────────────────────────
 // Añade la última posición vista del jugador al patrón de vigilancia.
