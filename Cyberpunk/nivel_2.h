@@ -67,7 +67,21 @@ private:
     QSoundEffect sonidoDeteccion;   // robot entra en modo persecución
     QSoundEffect sonidoHackeoLoop;  // loop mientras hackeas la computadora
     QSoundEffect sonidoVictoria;    // hackeo completado
+    QSoundEffect sonidoDanio;
 
+    // ── Sistema de daño con invulnerabilidad ──────────────────────────────────
+    int   vidasN2;                    // vidas del nivel (independiente de Personaje)
+    int   vidasN2Max      = 4;        // máximo de vidas
+    float tiempoInvulnerable = 0.f;   // contador de iframes tras recibir daño
+    static constexpr float DURACION_INVULNERABLE = 1.5f;  // segundos sin poder ser dañado
+
+
+    // ── HUD ───────────────────────────────────────────────────────────────────
+    QGraphicsTextItem*              itemHUDTimer;
+    std::vector<QGraphicsEllipseItem*> itemsCorazones;
+
+
+    void actualizarHUD();
 
 
 
@@ -113,7 +127,6 @@ private:
 
     // Ítems visuales (propiedad de la escena, no los borramos)
     std::vector<QGraphicsItem*>    itemsParedes;    ///< Rectángulos de las paredes
-    // QGraphicsEllipseItem*        itemObjetivo;    ///< Círculo del objetivo
     QGraphicsPixmapItem* itemObjetivo;
     std::vector<QGraphicsEllipseItem*> itemsDeteccion;  ///< Círculos de detección por robot
 
@@ -127,7 +140,7 @@ private:
     void resolverColisiones();    ///< Jugador ↔ paredes
     void verificarDeteccion();    ///< Robot alcanza al jugador → daño + respawn
     void verificarVictoria(float dt);
-    // void verificarVictoria(float dt);     ///< Jugador llega a la computadora
+
 
     void agregarItemsEscena();    ///< Crea y añade todos los QGraphicsItem a la escena
     void actualizarCirculosDeteccion(); ///< Mueve y recolorea los círculos cada tick

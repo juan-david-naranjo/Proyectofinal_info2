@@ -45,7 +45,13 @@ void Nivel_2::inicializar(Personaje* p)
     jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
 
     generarLaberinto();
-    //generarRobots();
+    generarRobots();
+
+    vidasN2 = vidasN2Max;           //modificable
+    tiempoInvulnerable = 0.f;
+
+    sonidoDanio.setSource(QUrl("qrc:/sonidoswav/Sonidos/hurtwav.wav"));
+    sonidoDanio.setVolume(1.0f);
 
     if (jugador)
         jugador->resetearPosicion(spawnX, spawnY);
@@ -67,7 +73,7 @@ void Nivel_2::inicializar(Personaje* p)
     estadosAnteriores.assign(robots.size(), EstadoAgente::PATRULLAJE);
 
     musicaFondo.setAudioOutput(&audioFondo);
-    musicaFondo.setSource(QUrl("qrc:/Sonidos/Sonidos/sonido_fondo.mp3"));
+    musicaFondo.setSource(QUrl("qrc:/sonidoswav/Sonidos/End of Line (From TRON_ LegacyScore).mp3"));
     audioFondo.setVolume(0.35f);       // suave para no tapar los efectos
     musicaFondo.setLoops(QMediaPlayer::Infinite);
     musicaFondo.play();
@@ -86,10 +92,10 @@ void Nivel_2::generarLaberinto()
 
 
     // ── Bordes del nivel (1250 × 700) ──────────────────────────────────────
-    plataformas.push_back(new Plataforma(  20.f,   0.f, 1295.f,  14.f)); // Techo
-    plataformas.push_back(new Plataforma(  20.f, 815.f, 1295.f,  14.f)); // Suelo
-    plataformas.push_back(new Plataforma(  0.f,   0.f,  16.f, 815.f)); // Pared izq
-    plataformas.push_back(new Plataforma(1295.f,   0.f,  20.f, 815.f)); // Pared der
+    plataformas.push_back(new Plataforma(  20.f,   0.f, 1295.f,  30.f,false,Plataforma::TipoMuro::HORIZONTAL)); // Techo
+    plataformas.push_back(new Plataforma(  20.f, 815.f, 1295.f,  30.f,false,Plataforma::TipoMuro::HORIZONTAL)); // Suelo
+    plataformas.push_back(new Plataforma(  0.f,   0.f,  30.f, 815.f,false,Plataforma::TipoMuro::VERTICAL)); // Pared izq
+    plataformas.push_back(new Plataforma(1295.f,   0.f,  30.f, 815.f,false,Plataforma::TipoMuro::VERTICAL)); // Pared der
 
     // ── Paredes internas del laberinto (vista cenital) ────────────────────
     // Estructura: {x, y, ancho, alto}
@@ -139,7 +145,7 @@ void Nivel_2::generarRobots()
 
     // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
     std::vector<Punto2D> wp1 = {
-         {220.f, 96.f}, {200.f, 440.f}
+                                {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{500.f,96.f}
     };
 
     //{196.f, 96.f}, {956.f, 96.f},
@@ -152,31 +158,52 @@ void Nivel_2::generarRobots()
         wp1
         ));
 
-    // // ── Robot 2: patrulla el sector central ──────────────────────────────
-    // std::vector<Punto2D> wp2 = {
-    //     {705.f, 715.f}, {540.f, 200.f}, {540.f, 360.f}, {340.f, 360.f}
-    // };
-    // robots.push_back(new RobotSeguridad(
-    //     705.f, 715.f,
-    //     100.f,
-    //     140.f,
-    //     90.f,
-    //     180.f,
-    //     wp2
-    //     ));
+    // ── Robot 2: patrulla el sector central ──────────────────────────────
+    std::vector<Punto2D> wp2 = {
+                                {1253.f, 715.f}, {184.f, 715.f},
+                                {700.f, 715.f}, {700.f, 512.f},
+                                {700.f,715.f}
+    };
+    robots.push_back(new RobotSeguridad(
+        1253.f, 718.f,
+        100.f,
+        140.f,
+        90.f,
+        180.f,
+        wp2
+        ));
 
-    // // ── Robot 3: guarda la computadora (mayor radio, más rápido) ─────────
-    // std::vector<Punto2D> wp3 = {
-    //     {677.f, 255.f}, {720.f, 540.f}, {680.f, 620.f}, {620.f, 560.f}
-    // };
-    // robots.push_back(new RobotSeguridad(
-    //     677.f, 255.f,
-    //     150.f,
-    //     200.f,
-    //     70.f,
-    //     210.f,
-    //     wp3
-    //     ));
+    // ── Robot 3: guarda la computadora (mayor radio, más rápido) ─────────
+    std::vector<Punto2D> wp3 = {
+        {676.f, 250.f}, {676.f, 380.f},         //up-down
+
+        {566.f,380.f},        //abajo-izquierda
+
+        {566.f, 250.f},      //ahora-sube
+
+        {366.f,250.f},
+
+        {566.f,250.f},
+
+        {566.f,380.f},
+
+        {800.f,380.f},
+
+        {800.f,480.f},
+
+        {800.f,380.f},
+
+        {676.f,380.f}
+
+    };
+    robots.push_back(new RobotSeguridad(
+        676.f, 250.f,
+        50.f,
+        200.f,
+        70.f,
+        210.f,
+        wp3
+        ));
 }
 
 
@@ -223,6 +250,7 @@ void Nivel_2::agregarItemsEscena()
             }
         }
     }
+
     // ── 2. Objetivo: la computadora ───────────────────────────────────────────
 
     QPixmap hojaObjetivo(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
@@ -295,7 +323,74 @@ void Nivel_2::agregarItemsEscena()
         jugador->getItem()->setZValue(4.0);
         escena->addItem(jugador->getItem());
     }
+
+    // ── HUD: Timer centrado arriba ────────────────────────────────────────────
+    itemHUDTimer = new QGraphicsTextItem("3:00");
+    itemHUDTimer->setDefaultTextColor(Qt::white);
+    itemHUDTimer->setFont(QFont("Consolas", 22, QFont::Bold));
+
+    // Centrar horizontalmente
+    float timerW = itemHUDTimer->boundingRect().width();
+    itemHUDTimer->setPos(escena->width() * 0.5f - timerW * 0.5f, 12.f);
+    itemHUDTimer->setZValue(20.0);
+    escena->addItem(itemHUDTimer);
+
+    // ── HUD: Corazones arriba a la izquierda ──────────────────────────────────
+    itemsCorazones.clear();
+    for (int i = 0; i < vidasN2Max; i++)
+    {
+        QGraphicsEllipseItem* corazon = new QGraphicsEllipseItem(0, 0, 22, 22);
+        corazon->setBrush(QBrush(QColor(220, 40, 40)));    // rojo = vida activa
+        corazon->setPen(QPen(QColor(255, 100, 100), 1));
+        corazon->setPos(14.f + i * 30.f, 14.f);
+        corazon->setZValue(20.0);
+        escena->addItem(corazon);
+        itemsCorazones.push_back(corazon);
+    }
+
+
+
+
 }
+
+
+void Nivel_2::actualizarHUD()
+{
+    // ── Timer ─────────────────────────────────────────────────────────────
+    if (itemHUDTimer)
+    {
+        int mins = tiempoRestante / 60;
+        int secs = tiempoRestante % 60;
+        QString txt = QString("%1:%2")
+                          .arg(mins)
+                          .arg(secs, 2, 10, QChar('0'));  // "2:05"
+
+        // Parpadeo rojo en los últimos 30 segundos
+        if (tiempoRestante <= 30)
+        {
+            bool parpadea = (static_cast<int>(tiempoContador * 4.f) % 2 == 0);
+            itemHUDTimer->setDefaultTextColor(parpadea ? QColor(255, 60, 60)
+                                                       : QColor(255, 160, 160));
+        }
+        else
+            itemHUDTimer->setDefaultTextColor(Qt::white);
+
+        itemHUDTimer->setPlainText(txt);
+    }
+
+    // ── Corazones ─────────────────────────────────────────────────────────
+    for (int i = 0; i < static_cast<int>(itemsCorazones.size()); i++)
+    {
+        if (i < vidasN2)
+            // Vida activa: rojo
+            itemsCorazones[i]->setBrush(QBrush(QColor(220, 40, 40)));
+        else
+            // Vida perdida: gris oscuro
+            itemsCorazones[i]->setBrush(QBrush(QColor(60, 60, 60)));
+    }
+}
+
+
 
 
 void Nivel_2::cargarSpriteObjetivo(const QPixmap& hoja,
@@ -494,6 +589,23 @@ void Nivel_2::actualizar(float dt)
     // ── Actualizar círculos de detección en la escena ─────────────────────
     actualizarCirculosDeteccion();
 
+    // ── Iframes: contar y hacer parpadear al personaje ────────────────────────
+    if (tiempoInvulnerable > 0.f)
+    {
+        tiempoInvulnerable -= dt;
+
+        // Parpadeo cada 0.1s — feedback visual de invulnerabilidad
+        bool visible = (static_cast<int>(tiempoInvulnerable * 10.f) % 2 == 0);
+        if (jugador->getItem()) jugador->getItem()->setVisible(visible);
+    }
+    else if (jugador->getItem() && !jugador->getItem()->isVisible())
+    {
+        jugador->getItem()->setVisible(true);  // asegurar visible al salir de iframes
+    }
+
+    // ── Actualizar HUD cada tick ──────────────────────────────────────────────
+    actualizarHUD();
+
     // ── Comprobar condiciones de fin ──────────────────────────────────────
     verificarDeteccion();
     verificarVictoria(dt);
@@ -542,14 +654,29 @@ void Nivel_2::verificarDeteccion()
                 robot->getX() + 16.f, robot->getY() + 16.f,
                 jx, jy, 30.f))
         {
-            jugador->recibirDanio(1);
-            jugador->resetearPosicion(spawnX, spawnY);
+            // jugador->recibirDanio(1);
+            // jugador->resetearPosicion(spawnX, spawnY);
 
-            // Si te atrapan mientras hackeabas, el progreso se pierde
-            tiempoHackeo  = 0.f;
-            haciendoHackeo = false;
-            sonidoHackeoLoop.stop();
+            // // Si te atrapan mientras hackeabas, el progreso se pierde
+            // tiempoHackeo  = 0.f;
+            // haciendoHackeo = false;
+            // sonidoHackeoLoop.stop();
 
+            // break;
+            // ── Recibir daño ──────────────────────────────────────────────
+            vidasN2--;
+            sonidoDanio.play();
+            tiempoInvulnerable = DURACION_INVULNERABLE;  // activar iframes
+
+            if (vidasN2 <= 0)
+            {
+                // Sin vidas → respawn y resetear todo
+                vidasN2        = vidasN2Max;
+                tiempoHackeo   = 0.f;
+                haciendoHackeo = false;
+                sonidoHackeoLoop.stop();
+                jugador->resetearPosicion(spawnX, spawnY);
+            }
             break;
         }
     }
@@ -637,12 +764,31 @@ bool Nivel_2::isCompletado() const
 void Nivel_2::setScene(QGraphicsScene *scene)
 {
     escena = scene;
-    scene->setSceneRect(0, 0, 1250, 700);
 
     if (Escenario && !Escenario->isNull())
-        scene->setBackgroundBrush(*Escenario);
+    {
+        // ── 1. SceneRect = dimensiones exactas de la imagen ──────────────
+        // Así fitInView sabe exactamente qué área escalar.
+        escena->setSceneRect(0, 0, Escenario->width(), Escenario->height());
+
+        // ── 2. Fondo como item, NO como brush ────────────────────────────
+        // setBackgroundBrush(pixmap) repite la imagen como mosaico.
+        // Un QGraphicsPixmapItem en z=-1 se dibuja una sola vez en (0,0).
+        QGraphicsPixmapItem* bg = new QGraphicsPixmapItem(*Escenario);
+        bg->setZValue(-1);
+        bg->setPos(0, 0);
+        escena->addItem(bg);
+
+        // ── 3. Color de las "barras" si la ventana tiene otra proporción ──
+        // Cuando fitInView deja espacio vacío alrededor, se ve este color.
+        escena->setBackgroundBrush(Qt::black);
+    }
     else
-        scene->setBackgroundBrush(QColor(20, 28, 40));  // Fallback oscuro
+    {
+        // Fallback si la imagen no cargó
+        escena->setSceneRect(0, 0, 1270, 650);
+        escena->setBackgroundBrush(QColor(5, 10, 20));
+    }
 
 }
 

@@ -22,6 +22,8 @@
         <file>Sonidos/sonido_victoria.wav</file>
         <file>Sonidos/sonido_boost_V2.wav</file>
         <file>Sonidos/Hacking.wav</file>
-        <file>Sonidos/Sonido_persecusion_wav.wav</file>
+        <file>Sonidos/End of Line (From TRON_ LegacyScore).mp3</file>
+        <file>Sonidos/clickwav.wav</file>
+        <file>Sonidos/hurtwav.wav</file>
     </qresource>
 </RCC>

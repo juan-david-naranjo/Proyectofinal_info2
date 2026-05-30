@@ -35,6 +35,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         robotseguridad.h robotseguridad.cpp
         plataforma.h plataforma.cpp
         Sprites.qrc
+        gamemanager.cpp
+        gamemanager.h
+        botonmenu.cpp botonmenu.h
 
     )
 # Define target properties for Android with Qt 6 as:
