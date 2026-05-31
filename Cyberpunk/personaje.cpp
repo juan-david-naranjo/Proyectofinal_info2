@@ -45,7 +45,7 @@ Personaje::Personaje(float X, float Y) : Personaje()
 
     cargarSpritesNivel1();
 
-    QPixmap inicial = n1_framesIdle.isEmpty()
+    QPixmap inicial = n1_framesIdle.empty()
         ? []{ QPixmap p(70,70); p.fill(Qt::red); return p; }()
         : n1_framesIdle[0];
     itemGrafico->setPixmap(inicial);
@@ -122,21 +122,39 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     }
 
     // ── Movimiento horizontal ─────────────────────────────────
-    float velHoriz = 0.f;
-    if (keys[0]) { velHoriz = -velMax; miraDerecha = false; }
-    if (keys[1]) { velHoriz =  velMax; miraDerecha = true;  }
+    bool teclaHoriz = keys[0] || keys[1];
 
-    if (enSuelo && std::abs(velHoriz) < 0.01f)
-        GestorFisicas::aplicarFriccion(Vx, dt);
-    else
-        Vx = velHoriz;
-
-    // ── Viento (solo en el aire) ──────────────────────────────
-    if (!enSuelo) {
+    if (enSuelo) {
+        // En suelo: control directo + fricción al soltar tecla
+        if (keys[0]) { Vx = -velMax; miraDerecha = false; }
+        else if (keys[1]) { Vx =  velMax; miraDerecha = true; }
+        else GestorFisicas::aplicarFriccion(Vx, dt);
+    } else {
+        // En el aire: la tecla fija dirección base, pero el viento se acumula encima
+        if (teclaHoriz) {
+            Vx = keys[0] ? -velMax : velMax;
+            if (keys[0]) miraDerecha = false;
+            if (keys[1]) miraDerecha = true;
+        }
+        // Viento siempre actúa en el aire (con o sin tecla pulsada)
         GestorFisicas::aplicarViento(Vx, tiempoTotal, dt);
         tiempoViento += dt;
-    } else {
-        tiempoViento = 0.f;
+    }
+
+    // Resetear acumulador de viento al tocar suelo
+    if (enSuelo) tiempoViento = 0.f;
+
+    // ── Inclinación visual por viento (solo en el aire) ───────
+    if (itemGrafico) {
+        if (!enSuelo) {
+            float fuerzaViento = GestorFisicas::calcularFuerzaViento(tiempoTotal);
+            // Inclinar hasta ±15° según la amplitud máxima del viento
+            float angulo = (fuerzaViento / GestorFisicas::VIENTO_AMPLITUD) * 15.f;
+            itemGrafico->setTransformOriginPoint(ANCHO / 2.f, ALTO / 2.f);
+            itemGrafico->setRotation(angulo);
+        } else {
+            itemGrafico->setRotation(0.f);  // volver vertical al aterrizar
+        }
     }
 
     // ── Gravedad + posición ───────────────────────────────────
@@ -157,7 +175,7 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 
     if (nuevo != estadoAnim) { estadoAnim=nuevo; frameActual=0; tiempoFrame=0.f; }
 
-    QVector<QPixmap>* frames = nullptr;
+    std::vector<QPixmap>* frames = nullptr;
     switch (estadoAnim) {
     case EstadoAnim::IDLE:      frames = &n1_framesIdle;      break;
     case EstadoAnim::CORRIENDO: frames = &n1_framesCorriendo; break;
@@ -254,26 +272,7 @@ void Personaje::actualizarNivel2(float dt)
 }
 
 // ============================================================
-//  tickAnimacion — Nivel 1 (QVector<QPixmap>)
-// ============================================================
-void Personaje::tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop)
-{
-    if (frames.isEmpty() || !itemGrafico) return;
-    tiempoFrame += dt;
-    if (tiempoFrame >= duracionFrame) {
-        tiempoFrame = 0.f;
-        frameActual = loop
-            ? (frameActual + 1) % frames.size()
-            : std::min(frameActual + 1, (int)frames.size() - 1);
-    }
-    QPixmap frame = frames[frameActual];
-    if (!miraDerecha)
-        frame = frame.transformed(QTransform().scale(-1, 1));
-    itemGrafico->setPixmap(frame);
-}
-
-// ============================================================
-//  tickAnimacion — Nivel 2 (std::vector<QPixmap> + multVelocidad)
+//  tickAnimacion — std::vector<QPixmap>
 //  multVelocidad > 1 → cada frame dura más → animación más lenta
 //  Aplica tinte cian si el boost está activo.
 // ============================================================
@@ -351,41 +350,41 @@ void Personaje::cargarSpritesNivel1()
 
     // IDLE
     n1_framesIdle.clear();
-    n1_framesIdle.append(extraer(17, 44, 36, 65));
+    n1_framesIdle.push_back(extraer(17, 44, 36, 65));
 
     // CORRER (7 frames)
     n1_framesCorriendo.clear();
-    n1_framesCorriendo.append(extraer( 86, 44, 42, 65));
-    n1_framesCorriendo.append(extraer(148, 44, 44, 65));
-    n1_framesCorriendo.append(extraer(206, 44, 54, 65));
-    n1_framesCorriendo.append(extraer(269, 44, 61, 65));
-    n1_framesCorriendo.append(extraer(346, 44, 55, 65));
-    n1_framesCorriendo.append(extraer(402, 44, 64, 65));
-    n1_framesCorriendo.append(extraer(490, 44, 51, 65));
+    n1_framesCorriendo.push_back(extraer( 86, 44, 42, 65));
+    n1_framesCorriendo.push_back(extraer(148, 44, 44, 65));
+    n1_framesCorriendo.push_back(extraer(206, 44, 54, 65));
+    n1_framesCorriendo.push_back(extraer(269, 44, 61, 65));
+    n1_framesCorriendo.push_back(extraer(346, 44, 55, 65));
+    n1_framesCorriendo.push_back(extraer(402, 44, 64, 65));
+    n1_framesCorriendo.push_back(extraer(490, 44, 51, 65));
 
     // SALTO (12 frames)
     n1_framesSaltando.clear();
-    n1_framesSaltando.append(extraer( 18, 110, 38, 98));
-    n1_framesSaltando.append(extraer( 70, 110, 57, 98));
-    n1_framesSaltando.append(extraer(127, 110, 58, 98));
-    n1_framesSaltando.append(extraer(185, 110, 58, 98));
-    n1_framesSaltando.append(extraer(251, 110, 40, 98));
-    n1_framesSaltando.append(extraer(322, 110, 33, 98));
-    n1_framesSaltando.append(extraer(371, 110, 34, 98));
-    n1_framesSaltando.append(extraer(418, 110, 38, 98));
-    n1_framesSaltando.append(extraer(462, 110, 44, 98));
-    n1_framesSaltando.append(extraer(506, 110, 45, 98));
-    n1_framesSaltando.append(extraer(552, 110, 43, 98));
-    n1_framesSaltando.append(extraer(605, 110, 39, 98));
+    n1_framesSaltando.push_back(extraer( 18, 110, 38, 98));
+    n1_framesSaltando.push_back(extraer( 70, 110, 57, 98));
+    n1_framesSaltando.push_back(extraer(127, 110, 58, 98));
+    n1_framesSaltando.push_back(extraer(185, 110, 58, 98));
+    n1_framesSaltando.push_back(extraer(251, 110, 40, 98));
+    n1_framesSaltando.push_back(extraer(322, 110, 33, 98));
+    n1_framesSaltando.push_back(extraer(371, 110, 34, 98));
+    n1_framesSaltando.push_back(extraer(418, 110, 38, 98));
+    n1_framesSaltando.push_back(extraer(462, 110, 44, 98));
+    n1_framesSaltando.push_back(extraer(506, 110, 45, 98));
+    n1_framesSaltando.push_back(extraer(552, 110, 43, 98));
+    n1_framesSaltando.push_back(extraer(605, 110, 39, 98));
 
     // VIENTO — OMITIDA
     n1_framesVientoCalda.clear();
 
     // CAÍDA FINAL (3 frames del personaje, ignorar obstáculos/UI)
     n1_framesCaidaFinal.clear();
-    n1_framesCaidaFinal.append(extraer( 18, 294, 60, 59));
-    n1_framesCaidaFinal.append(extraer( 96, 294, 60, 59));
-    n1_framesCaidaFinal.append(extraer(180, 294, 67, 59));
+    n1_framesCaidaFinal.push_back(extraer( 18, 294, 60, 59));
+    n1_framesCaidaFinal.push_back(extraer( 96, 294, 60, 59));
+    n1_framesCaidaFinal.push_back(extraer(180, 294, 67, 59));
 
     estadoAnim    = EstadoAnim::IDLE;
     frameActual   = 0;

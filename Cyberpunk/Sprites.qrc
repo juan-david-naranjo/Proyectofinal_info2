@@ -3,6 +3,7 @@
         <file>Sprites/Nivel1/sprites nivel 1 kael.png</file>
         <file>Sprites/Nivel1/Escenario1.png</file>
         <file>Sprites/Nivel1/Escenario1P.png</file>
+        <file>Sprites/Nivel1/spriteplataforma.png</file>
     </qresource>
     <qresource prefix="/Kael_nivel2">
         <file>Sprites/Nivel2/sprites nivel 2 kael.png</file>

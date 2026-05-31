@@ -12,8 +12,8 @@ Nivel_1::Nivel_1()
     : Nivel()
     , Escenario(nullptr)
     , puertaCerrada(false)
-    , spawnX(370.f)
-    , spawnY(ESCENA_H - 180.f)
+    , spawnX(2.f)
+    , spawnY(1271.f)
     , timerAcumulado(0.f)
     , escena(nullptr)
     , vista(nullptr)
@@ -23,6 +23,7 @@ Nivel_1::Nivel_1()
     , hudTiempo(nullptr)
     , hudVidas(nullptr)
     , hudPuerta(nullptr)
+    , debugHitboxItem(nullptr)
 {
     tiempoRestante = TIEMPO_NIVEL;
     Escenario = new QPixmap(":/Kael_nivel1/Sprites/Nivel1/Escenario1P.png");
@@ -116,6 +117,11 @@ void Nivel_1::inicializar(Personaje* p)
 
     if (escena)
     {
+        // Cargar sprite de plataforma (debe estar registrado en el .qrc)
+        spritePlataforma = QPixmap(":/Kael_nivel1/Sprites/Nivel1/spriteplataforma.png");
+        if (spritePlataforma.isNull())
+            qDebug() << "WARN: no se cargó spriteplataforma.png, usando color sólido";
+
         crearItemsPlataformas();
         crearHUD();
     }
@@ -126,6 +132,16 @@ void Nivel_1::inicializar(Personaje* p)
         if (escena && jugador->getItem() && !jugador->getItem()->scene())
             escena->addItem(jugador->getItem());
         jugador->getItem()->setZValue(10);
+    }
+
+    // ── Rect debug de hitbox ──────────────────────────────────
+    debugHitboxItem = nullptr;
+    if (DEBUG_HITBOX && escena)
+    {
+        debugHitboxItem = escena->addRect(0, 0, 1, 1,
+            QPen(QColor(0, 255, 80), 1.5f, Qt::SolidLine),
+            QBrush(QColor(0, 255, 80, 30)));
+        debugHitboxItem->setZValue(50);   // encima de todo
     }
 
     // Cámara inicial en el spawn
@@ -141,84 +157,84 @@ void Nivel_1::generarPlataformas()
     limpiarPlataformas();
 
     // Suelo base
-    plataformas.push_back(new Plataforma(  0.f, 1390.f, 800.f, 30.f, false));
+    //plataformas.push_back(new Plataforma(  0.f, 1390.f, 800.f, 30.f, false));
 
-    // Fila 1 — zona baja
-    plataformas.push_back(new Plataforma( 40.f, 1280.f, 160.f, 18.f, false));
-    plataformas.push_back(new Plataforma(340.f, 1260.f, 140.f, 18.f, false));
-    plataformas.push_back(new Plataforma(570.f, 1290.f, 150.f, 18.f, false));
+    // Puerta 1 — zona baja
+    plataformas.push_back(new Plataforma( 13.f, 1414.f, 137.f, 18.f, false)); //spawn
+    plataformas.push_back(new Plataforma(252.f, 1357.f,  68.f, 12.f, false));
+    plataformas.push_back(new Plataforma(456.f, 1315.f, 116.f, 23.f, false));
+    plataformas.push_back(new Plataforma(358.f, 1260.f,  49.f, 20.f, false));
+    //plataformas.push_back(new Plataforma(359.f, 1343.f, 122.f, 73.f, false)); //ventilador
+    plataformas.push_back(new Plataforma(430.f, 1198.f, 114.f, 27.f, false));
+    plataformas.push_back(new Plataforma(265.f, 1058.f, 277.f, 26.f, false));
 
-    // Fila 2
-    plataformas.push_back(new Plataforma(150.f, 1170.f, 130.f, 18.f, true ));
-    plataformas.push_back(new Plataforma(450.f, 1150.f, 120.f, 18.f, false));
-    plataformas.push_back(new Plataforma( 20.f, 1130.f, 110.f, 18.f, false));
-
-    // Fila 3
-    plataformas.push_back(new Plataforma(290.f, 1050.f, 140.f, 18.f, false));
-    plataformas.push_back(new Plataforma(560.f, 1020.f, 120.f, 18.f, true ));
-    plataformas.push_back(new Plataforma( 70.f,  990.f, 100.f, 18.f, false));
-
-    // Fila 4 — zona media
-    plataformas.push_back(new Plataforma(190.f,  880.f, 130.f, 18.f, true ));
-    plataformas.push_back(new Plataforma(480.f,  860.f, 110.f, 18.f, false));
-    plataformas.push_back(new Plataforma( 30.f,  830.f, 120.f, 18.f, false));
-
-    // Fila 5
-    plataformas.push_back(new Plataforma(320.f,  730.f, 100.f, 18.f, false));
-    plataformas.push_back(new Plataforma(570.f,  700.f, 120.f, 18.f, true ));
-    plataformas.push_back(new Plataforma( 90.f,  680.f, 110.f, 18.f, false));
-
-    // Fila 6
-    plataformas.push_back(new Plataforma(240.f,  570.f, 130.f, 18.f, false));
-    plataformas.push_back(new Plataforma(500.f,  540.f, 100.f, 18.f, true ));
-    plataformas.push_back(new Plataforma( 50.f,  510.f, 120.f, 18.f, false));
-
-    // Fila 7
-    plataformas.push_back(new Plataforma(310.f,  400.f, 130.f, 18.f, false));
-    plataformas.push_back(new Plataforma(560.f,  370.f, 110.f, 18.f, true ));
-    plataformas.push_back(new Plataforma( 80.f,  350.f, 120.f, 18.f, false));
-
-    // Fila 8
-    plataformas.push_back(new Plataforma(200.f,  250.f, 130.f, 18.f, false));
-    plataformas.push_back(new Plataforma(490.f,  220.f, 100.f, 18.f, true ));
-    plataformas.push_back(new Plataforma( 60.f,  200.f, 110.f, 18.f, false));
+    //Puerta 2 - zona media
+    plataformas.push_back(new Plataforma( 13.f,  955.f, 127.f, 22.f, false)); //Punto de control
+    plataformas.push_back(new Plataforma(265.f,  955.f, 113.f, 19.f, false));
+    plataformas.push_back(new Plataforma(219.f,  810.f, 107.f, 20.f, false));
+    plataformas.push_back(new Plataforma( 13.f,  688.f, 118.f, 25.f, false));
+    plataformas.push_back(new Plataforma(264.f,  701.f,  99.f, 28.f, false));
+    plataformas.push_back(new Plataforma(413.f,  701.f, 131.f, 28.f, false));
+    plataformas.push_back(new Plataforma(358.f,  585.f,  35.f, 18.f, false));
+    plataformas.push_back(new Plataforma( 13.f,  546.f, 346.f, 15.f, false));
+    plataformas.push_back(new Plataforma(483.f,  469.f, 303.f, 24.f, false));
+    plataformas.push_back(new Plataforma( 13.f,  394.f, 127.f, 22.f, false)); //Puerta 3
 
     // META — plataforma dorada
-    plataformas.push_back(new Plataforma(270.f,  110.f, 260.f, 18.f, false));
+    plataformas.push_back(new Plataforma(266.f,  297.f, 276.f, 18.f, false));
 }
 
 // ============================================================
 //  crearItemsPlataformas
+//  Usa spriteplataforma.png escalado al tamaño de cada plataforma.
+//  Si el sprite no cargó, cae back a rectángulos de color.
 // ============================================================
 void Nivel_1::crearItemsPlataformas()
 {
     limpiarItemsPlataformas();
 
-    const QColor colorSuelo (0x33, 0x44, 0x55, 255);
+    const bool usarSprite = !spritePlataforma.isNull();
+
+    // Colores de fallback (cuando no hay sprite)
     const QColor colorNormal(0x1a, 0x8a, 0xff, 200);
     const QColor colorMovil (0x00, 0xff, 0xcc, 180);
     const QColor colorMeta  (0xff, 0xd7, 0x00, 255);
-    const QPen   sinBorde(Qt::NoPen);
 
     for (int i = 0; i < static_cast<int>(plataformas.size()); ++i)
     {
         Plataforma* p = plataformas[i];
-        QColor color;
+        const bool  esMeta = (i == static_cast<int>(plataformas.size()) - 1);
 
-        if (i == 0)
-            color = colorSuelo;
-        else if (i == static_cast<int>(plataformas.size()) - 1)
-            color = colorMeta;
-        else if (p->esMovil)
-            color = colorMovil;
+        if (usarSprite && !esMeta)
+        {
+            // Escalar el sprite al tamaño exacto de la plataforma
+            QPixmap tile = spritePlataforma.scaled(
+                static_cast<int>(p->ancho),
+                static_cast<int>(p->alto),
+                Qt::IgnoreAspectRatio,
+                Qt::SmoothTransformation);
+
+            QGraphicsPixmapItem* item = escena->addPixmap(tile);
+            item->setPos(p->getX(), p->getY());
+            item->setZValue(5);
+            itemsPlataformas.push_back(item);
+        }
         else
-            color = colorNormal;
+        {
+            // Plataforma meta: dorada; fallback sin sprite: color según tipo
+            QColor color = esMeta ? colorMeta
+                         : p->esMovil ? colorMovil : colorNormal;
 
-        QGraphicsRectItem* item = escena->addRect(
-            p->getX(), p->getY(), p->ancho, p->alto,
-            sinBorde, QBrush(color));
-        item->setZValue(5);
-        itemsPlataformas.append(item);
+            // Creamos un pixmap del color sólido para mantener el mismo tipo
+            QPixmap pxFallback(static_cast<int>(p->ancho),
+                               static_cast<int>(p->alto));
+            pxFallback.fill(color);
+
+            QGraphicsPixmapItem* item = escena->addPixmap(pxFallback);
+            item->setPos(p->getX(), p->getY());
+            item->setZValue(5);
+            itemsPlataformas.push_back(item);
+        }
     }
 }
 
@@ -318,14 +334,21 @@ void Nivel_1::actualizarCamara()
     float camX = ESCENA_W / 2.f;
     float camY = jugador->getY() + CAM_OFFSET_Y;
 
-    // Clamping: calcular cuántos px lógicos son visibles en Y
+    // Calcular cuántos px lógicos son visibles en Y
     QPointF topScene    = vista->mapToScene(0, 0);
     QPointF bottomScene = vista->mapToScene(0, vista->viewport()->height());
     float visibleH = bottomScene.y() - topScene.y();
     float halfVis  = visibleH / 2.f;
 
-    if (camY - halfVis < 0.f)      camY = halfVis;
-    if (camY + halfVis > ESCENA_H) camY = ESCENA_H - halfVis;
+    // Clamping: evitar mostrar fuera de los bordes de la escena.
+    // Primero clampeamos el límite inferior, luego el superior,
+    // con std::max para que ambos no entren en conflicto.
+    float camYMin = halfVis;
+    float camYMax = ESCENA_H - halfVis;
+    if (camYMax < camYMin) camYMax = camYMin;   // escena más pequeña que la vista
+
+    if (camY < camYMin) camY = camYMin;
+    if (camY > camYMax) camY = camYMax;
 
     vista->centerOn(camX, camY);
 }
@@ -352,10 +375,9 @@ void Nivel_1::actualizar(float dt)
     for (int i = 0; i < static_cast<int>(plataformas.size()); ++i)
     {
         plataformas[i]->actualizar(dt);
-        if (i < itemsPlataformas.size() && itemsPlataformas[i])
-            itemsPlataformas[i]->setRect(
-                plataformas[i]->getX(), plataformas[i]->getY(),
-                plataformas[i]->ancho,  plataformas[i]->alto);
+        if (i < static_cast<int>(itemsPlataformas.size()) && itemsPlataformas[i])
+            itemsPlataformas[i]->setPos(
+                plataformas[i]->getX(), plataformas[i]->getY());
     }
 
     // 3. Física
@@ -378,7 +400,14 @@ void Nivel_1::actualizar(float dt)
     verificarCaida();
     verificarVictoria();
 
-    // 7. Cámara y HUD
+    // 7. Debug hitbox
+    if (DEBUG_HITBOX && debugHitboxItem && jugador)
+    {
+        Hitbox hb = jugador->getHitbox();
+        debugHitboxItem->setRect(hb.x, hb.y, hb.w, hb.h);
+    }
+
+    // 8. Cámara y HUD
     actualizarCamara();
     actualizarHUD();
 }
@@ -414,6 +443,8 @@ void Nivel_1::verificarCaida()
 void Nivel_1::verificarVictoria()
 {
     if (!jugador || puertaCerrada) return;
-    if (jugador->getY() < META_Y)
+    // Solo se activa cuando el jugador aterriza sobre la plataforma meta,
+    // no en el aire durante el salto
+    if (jugador->isEnSuelo() && jugador->getY() <= META_Y)
         completado = true;
 }

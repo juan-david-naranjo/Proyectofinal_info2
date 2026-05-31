@@ -77,7 +77,7 @@ void GameManager::gameTick()
     {
     case Estado::NIVEL_1:
         nivel1->actualizar(dt);
-        if (nivel1->completado) irANivel2();
+        if (nivel1->completado) mostrarNivelSuperado();
         break;
 
     case Estado::NIVEL_2:
@@ -115,7 +115,7 @@ void GameManager::irANivel1()
     limpiarOverlay();
     escena->clear();
 
-    //nivel1->setScene(escena);
+    nivel1->setScene(escena, vista);
     nivel1->inicializar(jugador);
     jugador->cargarSpritesNivel1();
 
@@ -179,20 +179,52 @@ void GameManager::mostrarVictoria()
     mostrarPantallaVictoria();
 }
 
+void GameManager::mostrarNivelSuperado()
+{
+    // Detener el timer ANTES de tocar la escena — evita el crash
+    // por punteros colgantes al llamar escena->clear() desde el tick
+    timer->stop();
+    detenerTodaMusica();
+    estadoActual = Estado::NIVEL_SUPERADO;
+
+    // Restaurar la view al estado neutro antes de limpiar el nivel 1
+    nivel1->restaurarView();
+    escena->clear();
+    limpiarOverlay();
+
+    mostrarPantallaNivelSuperado();
+
+    // Reanudar el timer solo para que los botones respondan
+    musicaMenu.play();
+    timer->start(MS_POR_TICK);
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  Slots de botones del menú de pausa (conectados en mostrarPantallaPausa)
 // ════════════════════════════════════════════════════════════════════════════
 void GameManager::onContinuar() { reanudar();  }
+void GameManager::onSiguienteNivel()
+{
+    sonidoClick.play();
+    nivel1->completado = false;
+    irANivel2();
+    timer->start(MS_POR_TICK);
+}
 void GameManager::onReiniciar()
 {
     sonidoClick.play();
+    nivel1->completado = false;
     nivel2->completado = false;
-    irANivel2();
+    if (estadoAntesDePausa == Estado::NIVEL_1)
+        irANivel1();
+    else
+        irANivel2();
     timer->start(MS_POR_TICK);
 }
 void GameManager::onIrAlMenu()
 {
     sonidoClick.play();
+    nivel1->completado = false;
     nivel2->completado = false;
     irAMenu();
 }
@@ -212,7 +244,7 @@ void GameManager::keyPressed(QKeyEvent* event)
             event->key() == Qt::Key_Space)
         {
             sonidoClick.play();
-            irANivel2();   // cambiar a irANivel1() cuando esté listo
+            irANivel1();
         }
         return;
 
@@ -286,8 +318,10 @@ void GameManager::aplicarEscala()
 void GameManager::limpiarOverlay()
 {
     for (QGraphicsItem* item : itemsOverlay)
+    {
         escena->removeItem(item);
-    qDeleteAll(itemsOverlay);
+        delete item;
+    }
     itemsOverlay.clear();
 }
 
@@ -298,7 +332,7 @@ void GameManager::agregarFondoOverlay()
     fondo->setPen(Qt::NoPen);
     fondo->setZValue(10.0);
     escena->addItem(fondo);
-    itemsOverlay.append(fondo);
+    itemsOverlay.push_back(fondo);
 }
 
 QGraphicsTextItem* GameManager::agregarTextoOverlay(const QString& texto,
@@ -316,7 +350,7 @@ QGraphicsTextItem* GameManager::agregarTextoOverlay(const QString& texto,
                  escena->height() * 0.5f - r.height()  * 0.5f + offsetY);
 
     escena->addItem(item);
-    itemsOverlay.append(item);
+    itemsOverlay.push_back(item);
     return item;
 }
 
@@ -332,7 +366,7 @@ BotonMenu* GameManager::agregarBotonOverlay(const QString& texto, float offsetY)
                 escena->height() * 0.5f - btnAlto   * 0.5f + offsetY);
 
     escena->addItem(btn);
-    itemsOverlay.append(btn);
+    itemsOverlay.push_back(btn);
     return btn;
 }
 
@@ -351,7 +385,7 @@ void GameManager::mostrarMenu()
     BotonMenu* btnIniciar = agregarBotonOverlay("►  INICIAR MISIÓN", 10.f);
     connect(btnIniciar, &BotonMenu::clicked, this, [this](){
         sonidoClick.play();
-        irANivel2();   // cambiar a irANivel1() cuando esté listo
+        irANivel1();
     }, Qt::QueuedConnection);
 
     agregarTextoOverlay(
@@ -379,6 +413,26 @@ void GameManager::mostrarPantallaPausa()
     connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
 
     agregarTextoOverlay("ESC — Continuar", QColor(80, 100, 90), 13, 175.f);
+}
+
+// ── Pantalla de nivel superado ────────────────────────────────────────────
+void GameManager::mostrarPantallaNivelSuperado()
+{
+    escena->setBackgroundBrush(QColor(5, 10, 20));
+    escena->setSceneRect(0, 0, 1250, 700);
+
+    agregarTextoOverlay("✓  NIVEL SUPERADO",
+                        QColor(0, 255, 120), 52, -150.f, true);
+    agregarTextoOverlay("Preparando siguiente infiltración...",
+                        QColor(100, 180, 140), 20, -80.f);
+
+    BotonMenu* btnSiguiente = agregarBotonOverlay("►  SIGUIENTE NIVEL", 10.f);
+    connect(btnSiguiente, &BotonMenu::clicked, this, &GameManager::onSiguienteNivel,
+            Qt::QueuedConnection);
+
+    BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 80.f);
+    connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu,
+            Qt::QueuedConnection);
 }
 
 // ── Pantalla de victoria ──────────────────────────────────────────────────

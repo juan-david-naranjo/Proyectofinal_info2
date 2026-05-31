@@ -40,8 +40,10 @@ void Nivel::resolverColisiones()
 
         if (toco)
         {
-            // Propagar posición resuelta de la hitbox al personaje
-            jugador->setPosicion(hbJugador.x, hbJugador.y);
+            // hbJugador.x/y son coordenadas de la hitbox (incluyen el offset).
+            // Restamos el offset para recuperar la posición real del sprite.
+            jugador->setPosicion(hbJugador.x - jugador->getHitboxOffsetX(),
+                                 hbJugador.y - jugador->getHitboxOffsetY());
             jugador->setVelocidad(vx, vy);
             if (enSuelo)
                 jugador->aterrizarEnSuelo(plat->getY());

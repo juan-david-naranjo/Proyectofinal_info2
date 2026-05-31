@@ -2,11 +2,13 @@
 #define NIVEL_1_H
 
 #include "nivel.h"
+#include <vector>
 #include <QPixmap>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsTextItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsPixmapItem>
 
 // ============================================================
 //  Nivel_1 — Vista lateral, Jump-King style
@@ -49,7 +51,10 @@ private:
     // ── Constantes del juego ──────────────────────────────────
     static constexpr int   TIEMPO_NIVEL = 90;
     static constexpr float LIMITE_CAIDA = ESCENA_H + 50.f;
-    static constexpr float META_Y       = 80.f;
+    // META — plataforma dorada: y=110, h=18 → superficie en y=128
+    // El jugador (alto=70) apoyado sobre ella queda en y=128-70=58
+    // Usamos un margen generoso: cualquier Y ≤ 130 estando en suelo
+    static constexpr float META_Y = 310.f;
 
     // El jugador aparece a este offset por debajo del centro
     static constexpr float CAM_OFFSET_Y = 150.f;
@@ -66,7 +71,8 @@ private:
     QGraphicsView*  vista;
 
     // ── Items gráficos de plataformas ─────────────────────────
-    QList<QGraphicsRectItem*> itemsPlataformas;
+    QPixmap spritePlataforma;                           // sprite cargado una vez
+    std::vector<QGraphicsPixmapItem*> itemsPlataformas; // reemplaza QGraphicsRectItem
 
     // ── HUD ───────────────────────────────────────────────────
     QGraphicsRectItem* fondoHUD;
@@ -75,6 +81,11 @@ private:
     QGraphicsTextItem* hudTiempo;
     QGraphicsTextItem* hudVidas;
     QGraphicsTextItem* hudPuerta;
+
+    // ── Debug ─────────────────────────────────────────────────
+    // Cambiar a false para desactivar la hitbox visual
+    static constexpr bool DEBUG_HITBOX = true;
+    QGraphicsRectItem* debugHitboxItem;
 
     // ── Helpers ───────────────────────────────────────────────
     void generarPlataformas();

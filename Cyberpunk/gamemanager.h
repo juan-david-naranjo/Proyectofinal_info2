@@ -10,7 +10,7 @@
 #include <QGraphicsTextItem>
 #include <QGraphicsRectItem>
 #include <QKeyEvent>
-#include <QList>
+#include <vector>
 
 // Sonidos
 #include <QMediaPlayer>
@@ -36,6 +36,7 @@ public:
         NIVEL_1,
         NIVEL_2,
         PAUSADO,
+        NIVEL_SUPERADO,   // pantalla entre nivel 1 y nivel 2
         VICTORIA,
         DERROTA
     };
@@ -57,6 +58,7 @@ private slots:
     void onContinuar();   // botón "CONTINUAR" del menú de pausa
     void onReiniciar();   // botón "REINICIAR"
     void onIrAlMenu();    // botón "MENÚ PRINCIPAL"
+    void onSiguienteNivel(); // botón "SIGUIENTE NIVEL" de pantalla nivel superado
 
 private:
     QGraphicsScene* escena;
@@ -72,7 +74,7 @@ private:
     Estado estadoActual;
     Estado estadoAntesDePausa;
 
-    QList<QGraphicsItem*> itemsOverlay;
+    std::vector<QGraphicsItem*> itemsOverlay;
 
     // ── Sonidos ───────────────────────────────────────────────
     QMediaPlayer musicaMenu;      // música de fondo del menú (MP3)
@@ -89,12 +91,14 @@ private:
     void irANivel2();
     void pausar();
     void reanudar();
+    void mostrarNivelSuperado();     // transición segura al completar nivel 1
     void mostrarVictoria();
 
     // ── UI helpers ────────────────────────────────────────────
     void limpiarOverlay();
     void mostrarMenu();
     void mostrarPantallaPausa();
+    void mostrarPantallaNivelSuperado();
     void mostrarPantallaVictoria();
     void agregarFondoOverlay();
 

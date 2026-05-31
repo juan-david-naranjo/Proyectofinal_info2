@@ -5,7 +5,6 @@
 #include <vector>
 #include <QKeyEvent>
 #include <QPixmap>
-#include <QDebug>
 #include <QPainter>
 
 // ============================================================
@@ -72,6 +71,9 @@ public:
                       hitboxAnchoReal,   hitboxAltoReal);
     }
 
+    float getHitboxOffsetX() const { return hitboxOffsetX; }
+    float getHitboxOffsetY() const { return hitboxOffsetY; }
+
     // ── Daño / reset ──────────────────────────────────────────
     void recibirDanio(int cantidad = 1);
     void resetearPosicion(float rx, float ry);
@@ -82,20 +84,20 @@ private:
     float ALTO  = 70.f;
 
     // Hitbox interna (puede diferir del sprite para mayor precisión)
-    float hitboxOffsetX  = 0.f;
-    float hitboxOffsetY  = 0.f;
-    float hitboxAnchoReal = 70.f;
-    float hitboxAltoReal  = 70.f;
+    float hitboxOffsetX   = 15.f;
+    float hitboxOffsetY   =  8.f;
+    float hitboxAnchoReal = 40.f;
+    float hitboxAltoReal  = 62.f;
 
     // ── Helpers ───────────────────────────────────────────────
     QPixmap eliminarFondo(const QPixmap& src, QColor cf, int tol);
 
     // ── Animaciones Nivel 1 ───────────────────────────────────
-    QVector<QPixmap> n1_framesIdle;          // Fila 1, grupo 1   (1f)
-    QVector<QPixmap> n1_framesCorriendo;     // Fila 1, grupos 2-8 (7f)
-    QVector<QPixmap> n1_framesSaltando;      // Fila 2, todos     (12f)
-    QVector<QPixmap> n1_framesVientoCalda;   // Fila 3 — OMITIDA, siempre vacío
-    QVector<QPixmap> n1_framesCaidaFinal;    // Fila 4, grupos 1-3 (3f)
+    std::vector<QPixmap> n1_framesIdle;          // Fila 1, grupo 1   (1f)
+    std::vector<QPixmap> n1_framesCorriendo;     // Fila 1, grupos 2-8 (7f)
+    std::vector<QPixmap> n1_framesSaltando;      // Fila 2, todos     (12f)
+    std::vector<QPixmap> n1_framesVientoCalda;   // Fila 3 — OMITIDA, siempre vacío
+    std::vector<QPixmap> n1_framesCaidaFinal;    // Fila 4, grupos 1-3 (3f)
 
     // ── Animaciones Nivel 2 ───────────────────────────────────
     std::vector<QPixmap> framesIdle;
@@ -159,10 +161,7 @@ private:
     // ── Sigilo (nivel 2) ──────────────────────────────────────
     float factorSigilo;
 
-    // ── tickAnimacion — dos sobrecargas ───────────────────────
-    // Nivel 1: usa QVector<QPixmap>
-    void tickAnimacion(float dt, QVector<QPixmap>& frames, bool loop);
-    // Nivel 2: usa std::vector<QPixmap> + multiplicador de velocidad
+    // ── tickAnimacion ─────────────────────────────────────────
     void tickAnimacion(float dt, std::vector<QPixmap>& frames,
                        bool loop, float multVelocidad = 1.0f);
 };
