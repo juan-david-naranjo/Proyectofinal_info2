@@ -83,7 +83,7 @@ void GameManager::gameTick()
     case Estado::NIVEL_2:
         nivel2->actualizar(dt);
         if (nivel2->completado) mostrarVictoria();
-        if (nivel2->sinVidas)   mostrarGameOver();   // ← agregar
+        else if (nivel2->sinVidas)   mostrarGameOver();   // ← agregar
         break;
 
     default: break;
@@ -99,9 +99,16 @@ void GameManager::irAMenu()
 {
     timer->stop();
     detenerTodaMusica();
-    escena->clear();
     limpiarOverlay();
+    if (jugador && jugador->getItem())          //proteccion para evitar comportamientos raros en memoria
+        escena->removeItem(jugador->getItem());
+    if(estadoActual==Estado::NIVEL_1){
+        //nivel1->limpiarItemsPlataformas();
+    }else{
+        nivel2->limpiarEscena();
+    }
 
+    escena->clear();
     estadoActual = Estado::MENU;
     mostrarMenu();
 
@@ -114,6 +121,11 @@ void GameManager::irANivel1()
     sonidoClick.play();
     detenerTodaMusica();
     limpiarOverlay();
+    if (jugador && jugador->getItem())          //proteccion para evitar comportamientos raros en memoria
+        escena->removeItem(jugador->getItem());
+
+
+
     escena->clear();
 
     //nivel1->setScene(escena);
@@ -130,6 +142,7 @@ void GameManager::irANivel1()
 void GameManager::irANivel2()
 {
 
+
     detenerTodaMusica();
     limpiarOverlay();
 
@@ -141,6 +154,8 @@ void GameManager::irANivel2()
     escena->clear();
     nivel2->setScene(escena);
     nivel2->inicializar(jugador);
+
+
     jugador->cargarSpritesNivel2();
     vista->setAlignment(Qt::AlignCenter);
     vista->fitInView(escena->sceneRect(), Qt::KeepAspectRatio);
@@ -205,6 +220,7 @@ void GameManager::onIrAlMenu()
 {
     timer->stop();
     detenerTodaMusica();
+     limpiarOverlay();
     // ── Misma protección ──────────────────────────────────────────────────
     if (jugador && jugador->getItem())
         escena->removeItem(jugador->getItem());
@@ -213,7 +229,7 @@ void GameManager::onIrAlMenu()
 
     nivel2->limpiarEscena();   // ← PRIMERO nullear punteros
     escena->clear();            // ← LUEGO destruir
-    limpiarOverlay();
+
 
     estadoActual = Estado::MENU;
     mostrarMenu();

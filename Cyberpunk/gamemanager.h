@@ -33,6 +33,7 @@ class GameManager : public QObject
 public:
     enum class Estado {
         MENU,
+        SELECCION_DIFICULTAD,
         NIVEL_1,
         NIVEL_2,
         PAUSADO,

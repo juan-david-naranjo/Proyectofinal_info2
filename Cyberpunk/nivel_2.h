@@ -33,7 +33,15 @@
 struct ZonaOculta {
     float x, y, w, h;
 };
+enum class EstadoZona { LIBRE, PROCESANDO, OCULTO };
 
+struct DatoEstadoZona {
+    EstadoZona estado     = EstadoZona::LIBRE;
+    bool       fueUsada   = false;   // si fue usada, muestra frameOcupada al salir
+    float      tiempoZona = 0.f;
+    int        frame      = 0;
+    float      tiempoFrame= 0.f;
+};
 
 
 class Nivel_2 : public Nivel
@@ -63,6 +71,23 @@ public:
                                    int srcX, int srcY,
                               int srcW, int srcH);
 
+
+
+    //zonas
+    //para las zonas
+    std::vector<QGraphicsPixmapItem*> itemsZonaSprites;
+    std::vector<DatoEstadoZona>       estadosZonas;
+    std::vector<QPixmap> framesZonaApertura;   // animación al entrar
+    QPixmap              frameZonaOcupada;     // primer frame de "los demás" (post-oculto)
+    bool  jugadorCompletamenteOculto  = false;
+    int   zonaActivaIdx               = -1;
+
+    static constexpr float UMBRAL_QUIETO         = 15.f;  // px/s — umbral "quieto"
+    static constexpr float TIEMPO_PARA_OCULTARSE = 2.f;   // segundos (ajustable)
+    float                  duracionFrameZona      = 0.1f;
+
+    void actualizarZonasOcultas(float dt);
+    void cargarSpritesZonas(const QPixmap &hoja, int oxAnim, int oyAnim, int fwA, int fhA, int numAnim, int sepAnim, int oxE, int oyE, int fwE, int fhE,const std::vector<QColor>& fondos, int tolerancia = 10);
 private:
 
     // ── Sonidos por evento ────────────────────────────────────────────────────
@@ -80,7 +105,8 @@ private:
 
 
     // ── HUD ───────────────────────────────────────────────────────────────────
-    QGraphicsTextItem*              itemHUDTimer;
+    QGraphicsTextItem*              itemHUDTimer = nullptr;
+
     std::vector<QGraphicsEllipseItem*> itemsCorazones;
 
 
@@ -90,8 +116,12 @@ private:
 
     // seccion zona oculta:
     std::vector<ZonaOculta>  zonasOcultas;
-    std::vector<QGraphicsRectItem*> itemsZonas;     // visuales oscuros
+    std::vector<QGraphicsItem*> itemsZonas;     // visuales oscuros
+
+
     bool jugadorEnSombra() const;
+
+
 
     // ── Sonidos fondo ────────────────────────────────────────────────────
     QMediaPlayer musicaFondo;
@@ -115,7 +145,26 @@ private:
     float objetivoRadio;
     float spawnX;
     float spawnY;
-    float tiempoContador;     /// Acumulador para descontar tiempoRestante cada segundo
+    float tiempoContador;     // Acumulador para descontar tiempoRestante cada segundo
+
+    QGraphicsRectItem* itemBarraFondo    = nullptr;
+    QGraphicsRectItem* itemBarraRelleno  = nullptr;
+    static constexpr float BARRA_ANCHO   = 137.f;  // igual al ancho del sprite
+    static constexpr float BARRA_ALTO    = 12.f;
+
+    // ── Animación de destrucción de la computadora ────────────────────────────
+    std::vector<QPixmap> framesDestruccion;
+    int   frameDestruccion   = 0;
+    float tiempoFrameDestr   = 0.f;
+    float duracionFrameDestr = 0.12f;   // ajustable
+    bool  animandoDestruccion = false;
+
+    // Métodos nuevos
+    void cargarSpritesDestruccion(const QPixmap& hoja,
+                                  int ox, int oy, int fw, int fh,
+                                  int numFrames, int sep = 0,
+                                  QColor fondoColor = QColor(0,0,0,0));
+    void actualizarAnimDestruccion(float dt);
 
 
 
@@ -134,8 +183,9 @@ private:
 
     void generarLaberinto();
     void generarRobots();
+    void generarRobots(int dificult);
     void limpiarRobots();
-
+    void setDifficult(int dificult);
 
 
     void resolverColisiones();    ///< Jugador ↔ paredes
@@ -147,6 +197,7 @@ private:
     void actualizarCirculosDeteccion(); ///< Mueve y recolorea los círculos cada tick
 
     static QPixmap crearSpriteRobot(int w, int h); ///< Dibuja el robot con QPainter
+
 
 
 };
