@@ -68,7 +68,9 @@ public:
 
     // Hitbox getHitbox() const override { return Hitbox(x, y, ANCHO, ALTO); }
     Hitbox getHitbox() const override {
-        return Hitbox(x+hitboxOffsetX, y + hitboxOffsetY, hitboxAnchoReal, hitboxAltoReal);
+        return Hitbox(x + hitboxOffsetX,
+                      y + hitboxOffsetY,
+                      ANCHO, ALTO);
     }
 
     void setHitboxOffset(float offsetX,float offsetY,float anchoEfectivo, float altoEfectivo);

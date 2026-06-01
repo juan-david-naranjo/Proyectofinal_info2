@@ -1,7 +1,5 @@
 #include "nivel_2.h"
 #include "gestorfisicas.h"
-
-
 #include <QPainter>
 #include <cmath>
 #include <algorithm>
@@ -12,15 +10,14 @@ Nivel_2::Nivel_2()
     , objetivoY(308.f)
     , objetivoRadio(40.f)
     , spawnX(677.f)
-    , spawnY(147.f)
+    , spawnY(140.f)
     , escena(nullptr)
     , tiempoContador(0.f)
     ,itemObjetivo(nullptr)
 {
-    tiempoRestante = 180; // 3 minutos
+    tiempoRestante = 120;
     Escenario= new QPixmap(":/Kael_nivel2/Sprites/Nivel2/Escenario_V2.png");
 
-    // Escenario->scaled(1250,660);
 }
 
 Nivel_2::~Nivel_2()
@@ -58,7 +55,7 @@ void Nivel_2::inicializar(Personaje* p)
 
     // ── Cargar sonidos ────────────────────────────────────────────────────
     // Ajusta las rutas según tus recursos (qrc o ruta local)
-    sonidoDeteccion.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_persecusion_wav.wav"));
+    sonidoDeteccion.setSource(QUrl("qrc:/sonidoswav/Sonidos/persecusionwav.wav"));
     sonidoDeteccion.setVolume(0.9f);
 
     sonidoHackeoLoop.setSource(QUrl("qrc:/sonidoswav/Sonidos/Hacking.wav"));
@@ -257,7 +254,7 @@ void Nivel_2::agregarItemsEscena()
     if (hojaObjetivo.isNull())
         qDebug() << "WARN: hoja de computadora no cargó";
 
-    // ← el desarrollador coloca sus coordenadas aquí
+    // el desarrollador coloca sus coordenadas aquí
     cargarSpriteObjetivo(hojaObjetivo, 731, 557, 137, 140);
 
     // ── 3. Robots de seguridad ────────────────────────────────────────────────
@@ -266,10 +263,8 @@ void Nivel_2::agregarItemsEscena()
     //  Si los sprites del robot están en una hoja distinta a la del personaje,
     //  cambia la ruta en QPixmap robotSheet("...").
     //
-    //  RUTA ACTUAL: misma hoja que el personaje.
-    //  Ajusta si tus robots tienen su propio archivo.
     // ─────────────────────────────────────────────────────────────────────────
-    QPixmap robotSheet(":/Kael_nivel2/Sprites/Nivel2/sprites nivel 2 kael.png");
+    QPixmap robotSheet(":/Kael_nivel2/Sprites/Nivel2/Robot_V2.png");
     bool sheetOk = !robotSheet.isNull();
 
     if (!sheetOk)
@@ -316,6 +311,20 @@ void Nivel_2::agregarItemsEscena()
         escena->addItem(circulo);
         itemsDeteccion.push_back(circulo);
     }
+    // ── Debug: hitbox visible de cada robot (naranja) ─────────────────────────
+    debugRobotsRect.clear();
+    for (int i = 0; i < static_cast<int>(robots.size()); i++)
+    {
+        QGraphicsRectItem* dr = escena->addRect(
+            0, 0, 32.f, 32.f,
+            QPen(QColor(255, 140, 0, 220), 2),   // naranja
+            QBrush(QColor(255, 140, 0, 30))       // relleno muy tenue
+            );
+        dr->setZValue(98);
+        debugRobotsRect.push_back(dr);
+    }
+
+
 
     // ── 4. Personaje (encima de todo) ─────────────────────────────────────────
     if (jugador && jugador->getItem())
@@ -524,7 +533,7 @@ void Nivel_2::actualizarCirculosDeteccion()
 void Nivel_2::actualizar(float dt)
 {
 
-    if (!jugador) return;   // ← mover este guard al inicio
+    if (!jugador) return;
 
     bool oculto = jugadorEnSombra();
 
@@ -555,6 +564,16 @@ void Nivel_2::actualizar(float dt)
         robot->setPosicion(rx, ry);
         robot->setVelocidad(rvx, rvy);
     };
+    // ── 3. HITBOX ROBOTS: actualizar posición de los rects debug ─────────────
+    for (int i = 0; i < static_cast<int>(robots.size()) &&
+                    i < static_cast<int>(debugRobotsRect.size()); i++)
+    {
+        debugRobotsRect[i]->setRect(
+            robots[i]->getX(),
+            robots[i]->getY(),
+            32.f, 32.f
+            );
+    }
 
     // ── Timer: usar acumulador para descontar segundos exactos ────────────
     // BUG ORIGINAL: (int)dt siempre es 0 a 60 fps (dt ≈ 0.016).
@@ -572,14 +591,15 @@ void Nivel_2::actualizar(float dt)
     jugador->actualizarNivel2(dt);
     if (escena)
     {
-        static QGraphicsRectItem* debugRect = nullptr;
-        if (!debugRect) {
-            debugRect = escena->addRect(0,0,1,1,
-                                        QPen(QColor(255,0,0,200), 2));
-            debugRect->setZValue(99);
+        if (!debugJugadorRect)
+        {
+            debugJugadorRect = escena->addRect(0, 0, 1, 1,
+                                               QPen(QColor(255, 0, 0, 200), 2));
+            debugJugadorRect->setZValue(99);
         }
         Hitbox hb = jugador->getHitbox();
-        debugRect->setRect(hb.x, hb.y, hb.w, hb.h);
+        debugJugadorRect->setRect(hb.x, hb.y, hb.w, hb.h);
+        debugJugadorRect->setVisible(!oculto);
     }
 
     // ── Resolver colisiones del jugador con las paredes ───────────────────
@@ -602,6 +622,7 @@ void Nivel_2::actualizar(float dt)
     {
         jugador->getItem()->setVisible(true);  // asegurar visible al salir de iframes
     }
+
 
     // ── Actualizar HUD cada tick ──────────────────────────────────────────────
     actualizarHUD();
@@ -654,15 +675,7 @@ void Nivel_2::verificarDeteccion()
                 robot->getX() + 16.f, robot->getY() + 16.f,
                 jx, jy, 30.f))
         {
-            // jugador->recibirDanio(1);
-            // jugador->resetearPosicion(spawnX, spawnY);
 
-            // // Si te atrapan mientras hackeabas, el progreso se pierde
-            // tiempoHackeo  = 0.f;
-            // haciendoHackeo = false;
-            // sonidoHackeoLoop.stop();
-
-            // break;
             // ── Recibir daño ──────────────────────────────────────────────
             vidasN2--;
             sonidoDanio.play();
@@ -671,11 +684,9 @@ void Nivel_2::verificarDeteccion()
             if (vidasN2 <= 0)
             {
                 // Sin vidas → respawn y resetear todo
-                vidasN2        = vidasN2Max;
-                tiempoHackeo   = 0.f;
-                haciendoHackeo = false;
+                sinVidas = true;
                 sonidoHackeoLoop.stop();
-                jugador->resetearPosicion(spawnX, spawnY);
+                musicaFondo.stop();
             }
             break;
         }
@@ -802,12 +813,19 @@ void Nivel_2::limpiarEscena()
     itemsZonas.clear();
     itemsDeteccion.clear();
     itemObjetivo = nullptr;
+    debugRobotsRect.clear();     // ← agregar
+    itemsCorazones.clear();      // ← agregar
+    itemHUDTimer       = nullptr; // ← agregar
+    debugJugadorRect   = nullptr; // ← agregar (reemplaza el static)
 
     // Nullear itemGrafico de cada plataforma — scena->clear() ya los destruyó
-    for (Plataforma* plat : plataformas)
+    for (Plataforma* plat : plataformas){
+        if(!plat) continue;
         plat->setItemNull();  // evita double-free en limpiarPlataformas
-
+    }
     // Nullear itemGrafico de cada robot
-    for (RobotSeguridad* robot : robots)
+    for (RobotSeguridad* robot : robots){
+        if(!robot) continue;
         robot->setItemGrafico(nullptr);
+    }
 }

@@ -83,6 +83,7 @@ void GameManager::gameTick()
     case Estado::NIVEL_2:
         nivel2->actualizar(dt);
         if (nivel2->completado) mostrarVictoria();
+        if (nivel2->sinVidas)   mostrarGameOver();   // ← agregar
         break;
 
     default: break;
@@ -128,18 +129,23 @@ void GameManager::irANivel1()
 
 void GameManager::irANivel2()
 {
+
     detenerTodaMusica();
     limpiarOverlay();
-    escena->clear();
 
+    if (jugador && jugador->getItem())          //proteccion para evitar comportamientos raros en memoria
+        escena->removeItem(jugador->getItem());
+
+
+    nivel2->limpiarEscena();
+    escena->clear();
     nivel2->setScene(escena);
     nivel2->inicializar(jugador);
     jugador->cargarSpritesNivel2();
-
     vista->setAlignment(Qt::AlignCenter);
     vista->fitInView(escena->sceneRect(), Qt::KeepAspectRatio);
-
     estadoActual = Estado::NIVEL_2;
+
 
 }
 
@@ -179,22 +185,40 @@ void GameManager::mostrarVictoria()
     mostrarPantallaVictoria();
 }
 
+
+
 // ════════════════════════════════════════════════════════════════════════════
 //  Slots de botones del menú de pausa (conectados en mostrarPantallaPausa)
 // ════════════════════════════════════════════════════════════════════════════
 void GameManager::onContinuar() { reanudar();  }
+
 void GameManager::onReiniciar()
 {
     sonidoClick.play();
     nivel2->completado = false;
+    nivel2->sinVidas   = false;
     irANivel2();
     timer->start(MS_POR_TICK);
+    //qDebug("no hubo error!");
 }
 void GameManager::onIrAlMenu()
 {
-    sonidoClick.play();
-    nivel2->completado = false;
-    irAMenu();
+    timer->stop();
+    detenerTodaMusica();
+    // ── Misma protección ──────────────────────────────────────────────────
+    if (jugador && jugador->getItem())
+        escena->removeItem(jugador->getItem());
+
+
+
+    nivel2->limpiarEscena();   // ← PRIMERO nullear punteros
+    escena->clear();            // ← LUEGO destruir
+    limpiarOverlay();
+
+    estadoActual = Estado::MENU;
+    mostrarMenu();
+    musicaMenu.play();
+    timer->start(MS_POR_TICK);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -251,7 +275,10 @@ void GameManager::keyPressed(QKeyEvent* event)
         default: break;
         }
         return;
-
+    case Estado::DERROTA:
+        if (event->key() == Qt::Key_R) { onReiniciar(); }
+        if (event->key() == Qt::Key_M) { onIrAlMenu();  }
+        return;
     default: break;
     }
 }
@@ -395,4 +422,26 @@ void GameManager::mostrarPantallaVictoria()
 
     BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 80.f);
     connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu);
+}
+
+void GameManager::mostrarGameOver()
+{
+    timer->stop();
+    detenerTodaMusica();
+    estadoActual = Estado::DERROTA;
+
+    agregarFondoOverlay();
+
+    agregarTextoOverlay("GAME  OVER",
+                        QColor(220, 40, 40), 52, -130.f, true);
+    agregarTextoOverlay("El equipo de seguridad te atrapó",
+                        QColor(200, 120, 120), 18, -60.f);
+
+    BotonMenu* btnReintentar = agregarBotonOverlay("↺  REINTENTAR", 10.f);
+    connect(btnReintentar, &BotonMenu::clicked,
+            this, &GameManager::onReiniciar, Qt::QueuedConnection);
+
+    BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 80.f);
+    connect(btnMenu, &BotonMenu::clicked,
+            this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
 }

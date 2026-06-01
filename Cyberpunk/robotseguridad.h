@@ -3,6 +3,7 @@
 
 #include "enemigo.h"
 #include <vector>
+#include <QDebug>
 
 // ============================================================
 //  RobotSeguridad  —  Agente inteligente del Nivel 2
@@ -96,8 +97,6 @@ private:
     // Miembros privados nuevos (sección private)
     std::vector<QPixmap> framesPatrullaje;
     std::vector<QPixmap> framesAlert;
-     // QVector<QPixmap> framesPatrullaje;
-     // QVector<QPixmap> framesAlert;
      int   frameActual            = 0;
      float tiempoFrame            = 0.f;
      float duracionFramePatrullaje;

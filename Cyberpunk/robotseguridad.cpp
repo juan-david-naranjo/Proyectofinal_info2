@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 
+
 RobotSeguridad::RobotSeguridad(float px, float py,
                                float rDeteccion,
                                float rDesenganche,
@@ -64,11 +65,11 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
     // ════════════════════════════════════════════════════════════════════════
     framesPatrullaje.clear();
     {
-        const int ox  = 723, oy = 135;
-        const int fw  = 71,  fh = 70;
-        const int sep = 11;
-        const int num = 8;
-        const QColor bg(0x2f, 0x4b, 0x56);
+        const int ox  = 1, oy = 48;
+        const int fw  = 29,  fh = 43;
+        const int sep = 1;
+        const int num = 5;
+        const QColor bg(255, 0, 255);
 
         for (int i = 0; i < num; i++)
         {
@@ -81,7 +82,7 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
                 continue;
             }
             QPixmap frame = sheet.copy(x, oy, fw, fh);
-            framesPatrullaje.push_back(quitarFondo(frame, bg, 10));
+            framesPatrullaje.push_back(quitarFondo(frame, bg, 0));
         }
     }
 
@@ -99,38 +100,29 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
     // ════════════════════════════════════════════════════════════════════════
     framesAlert.clear();
     {
-        const QColor bg0(0x0e, 0x15, 0x28);
-        const QColor bg2(0x0f, 0x17, 0x2a);
+        const QColor bg(255, 0, 255);
+        // const QColor bg2(0x0f, 0x17, 0x2a);
 
-        // Tamaño de referencia: el del frame más pequeño (77 × 78 aprox.)
-        // Lo normalizamos al tamaño de los frames de patrullaje (71 × 70).
-        const int refW = 71, refH = 70;
+        const int ox  = 1, oy = 222;
+        const int fw  = 80,  fh = 45;
+        const int sep = 1;
+        const int num = 8;
 
-        struct AlertFrame { int x, y, w, h; QColor bg; };
-        static const AlertFrame aFrames[] = {
-                                             { 791, 295, 251, 78,  bg0 },
-                                             { 953, 392,  77, 79,  bg0 },
-                                             {1036, 328,  79, 102, bg2 },
-                                             };
 
-        for (const auto& af : aFrames)
+        for (int i = 0; i < num; i++)
         {
-            QPixmap raw;
-            if (af.x + af.w <= sheet.width() && af.y + af.h <= sheet.height())
-                raw = sheet.copy(af.x, af.y, af.w, af.h);
-            else
+            int x = ox + i * (fw + sep);
+            if (x + fw > sheet.width() || oy + fh > sheet.height())
             {
-                raw = QPixmap(af.w, af.h);
-                raw.fill(Qt::transparent);
+                QPixmap ph(fw, fh);
+                ph.fill(Qt::transparent);
+                framesAlert.push_back(ph);
+                continue;
             }
-
-            QPixmap limpio = quitarFondo(raw, af.bg, 10);
-
-            // Escalar al tamaño de referencia para animación uniforme
-            framesAlert.push_back(
-                limpio.scaled(refW, refH, Qt::KeepAspectRatio, Qt::SmoothTransformation)
-                );
+            QPixmap frame = sheet.copy(x, oy, fw, fh);
+            framesAlert.push_back(quitarFondo(frame, bg, 0));
         }
+
     }
 
     // ── Aplicar primer frame y pivote de rotación en el centro ───────────────
@@ -142,6 +134,96 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
     }
 }
 
+void RobotSeguridad::moverHacia(float tx, float ty, float dt)
+{
+    float velActual = (estado == EstadoAgente::PERSECUCION)
+    ? velPersecucion
+    : velPatrulla;
+
+    float dx = tx - x;
+    float dy = ty - y;
+    float dist = std::sqrt(dx*dx + dy*dy);
+
+    if (dist < 1.f) { Vx = 0; Vy = 0; return; }
+
+    // Dirección normalizada
+    float nx = dx / dist;
+    float ny = dy / dist;
+
+    float targetVx = nx * velActual;
+    float targetVy = ny * velActual;
+
+    // Aplicar inercia (MRUA)
+    GestorFisicas::aplicarInercia(Vx, targetVx, dt);
+    GestorFisicas::aplicarInercia(Vy, targetVy, dt);
+
+    x += Vx * dt;
+    y += Vy * dt;
+}
+
+// void RobotSeguridad::moverHacia(float tx, float ty, float dt)
+// {
+//     float velActual = (estado == EstadoAgente::PERSECUCION) ? velPersecucion : velPatrulla;
+
+//     float dx = tx - x;
+//     float dy = ty - y;
+//     float dist = std::sqrt(dx*dx + dy*dy);
+
+//     if (dist < 2.f) { Vx = 0; Vy = 0; return; }
+
+//     // 1. Intentar trayectoria directa (Diagonal/Recta original)
+//     float nx = dx / dist;
+//     float ny = dy / dist;
+//     float targetVx = nx * velActual;
+//     float targetVy = ny * velActual;
+
+//     // Simular dónde estaría el robot en el próximo frame si va directo
+//     float siguienteX_directo = x + targetVx * dt;
+//     float siguienteY_directo = y + targetVy * dt;
+
+//     // ── EVALUACIÓN DE OBSTÁCULO ──
+//     // Reemplaza 'GestorFisicas::colisionConMuro' por tu función real de colisión del nivel
+//     bool caminoDirectoBloqueado = GestorFisicas::colisionConMuro(siguienteX_directo, siguienteY_directo);
+
+//     if (caminoDirectoBloqueado)
+//     {
+//         // ¡Alerta! Hay una pared al frente. Aplicamos tu lógica: Descomponer en ejes.
+
+//         // Prueba 1: Intentar moverse SOLO en Y (para buscar la altura del objetivo)
+//         float siguienteY_solo = y + (ny > 0 ? velActual : -velActual) * dt;
+//         bool ejeY_libre = !GestorFisicas::colisionConMuro(x, siguienteY_solo) && std::abs(dy) > 4.f;
+
+//         // Prueba 2: Intentar moverse SOLO en X (moverse hacia el lado)
+//         float siguienteX_solo = x + (nx > 0 ? velActual : -velActual) * dt;
+//         bool ejeX_libre = !GestorFisicas::colisionConMuro(siguienteX_solo, y) && std::abs(dx) > 4.f;
+
+//         if (ejeY_libre)
+//         {
+//             // Se alinea verticalmente primero (tu idea de "subir hasta la altura")
+//             targetVx = 0.f;
+//             targetVy = (dy > 0) ? velActual : -velActual;
+//         }
+//         else if (ejeX_libre)
+//         {
+//             // Si no puede en Y, intenta avanzar en X bordeando la pared
+//             targetVx = (dx > 0) ? velActual : -velActual;
+//             targetVy = 0.f;
+//         }
+//         else
+//         {
+//             // Si ambos ejes individuales están bloqueados por esquinas, retrocede un poco o frena
+//             targetVx = -targetVx * 0.5f;
+//             targetVy = -targetVy * 0.5f;
+//         }
+//     }
+
+//     // 2. Aplicar las velocidades finales con la inercia que ya tenías
+//     GestorFisicas::aplicarInercia(Vx, targetVx, dt);
+//     GestorFisicas::aplicarInercia(Vy, targetVy, dt);
+
+//     x += Vx * dt;
+//     y += Vy * dt;
+// }
 
 
 
@@ -214,6 +296,8 @@ void RobotSeguridad::razonar(bool jugadorOculto)
                                            radioDeteccion))
         {
             estado = EstadoAgente::PERSECUCION;
+            frameActual       = 0;    // ← animación de alerta desde frame 0
+            tiempoFrame       = 0.f;
             tiempoPersecucion = 0.f;
             actualizarWaypoints();
         }
@@ -228,6 +312,8 @@ void RobotSeguridad::razonar(bool jugadorOculto)
                                             radioDesenganche))
         {
             estado = EstadoAgente::PATRULLAJE;
+            frameActual       = 0;    // ← animación de alerta desde frame 0
+            tiempoFrame       = 0.f;
         }
         break;
     }
@@ -343,9 +429,45 @@ void RobotSeguridad::actuar(float dt)
     // }
     }
 
-    // Sincronizar sprite
+
+
+
+    // ── ANIMACIÓN + ORIENTACIÓN + POSICIÓN ────────────────────────────────
     if (itemGrafico)
+    {
+        // ── Seleccionar vector de frames según estado ─────────────────────
+        const std::vector<QPixmap>* frames = nullptr;
+        float duracion = duracionFramePatrullaje;
+
+        if (estado == EstadoAgente::PERSECUCION && !framesAlert.empty())
+        {
+            frames   = &framesAlert;
+            duracion = duracionFrameAlert;
+            //qDebug("aqui no esta tirando error 361");
+
+        }
+        else if (!framesPatrullaje.empty())
+        {
+            frames   = &framesPatrullaje;
+            duracion = duracionFramePatrullaje;
+            //qDebug("aqui no esta tirando error 368");
+        }
+
+        // ── Avanzar frame ─────────────────────────────────────────────────
+        if (frames && !frames->empty())
+        {
+            tiempoFrame += dt;
+            if (tiempoFrame >= duracion)
+            {
+                tiempoFrame  = 0.f;
+                frameActual  = (frameActual + 1) % static_cast<int>(frames->size());
+            }
+            //qDebug("aqui no esta tirando error 380");
+            itemGrafico->setPixmap(frames->at(frameActual));
+        }
+        //qDebug("aqui esta tirando error 383");
         itemGrafico->setPos(x, y);
+    }
 }
 
 // ── TICK (método completo para el nivel) ─────────────────────────────────────
@@ -385,29 +507,4 @@ void RobotSeguridad::actualizarWaypoints()
 
 // ── MOVIMIENTO CON INERCIA ───────────────────────────────────────────────────
 // Mueve el robot hacia (tx, ty) usando MRUA en ambos ejes.
-void RobotSeguridad::moverHacia(float tx, float ty, float dt)
-{
-    float velActual = (estado == EstadoAgente::PERSECUCION)
-                      ? velPersecucion
-                      : velPatrulla;
 
-    float dx = tx - x;
-    float dy = ty - y;
-    float dist = std::sqrt(dx*dx + dy*dy);
-
-    if (dist < 1.f) { Vx = 0; Vy = 0; return; }
-
-    // Dirección normalizada
-    float nx = dx / dist;
-    float ny = dy / dist;
-
-    float targetVx = nx * velActual;
-    float targetVy = ny * velActual;
-
-    // Aplicar inercia (MRUA)
-    GestorFisicas::aplicarInercia(Vx, targetVx, dt);
-    GestorFisicas::aplicarInercia(Vy, targetVy, dt);
-
-    x += Vx * dt;
-    y += Vy * dt;
-}

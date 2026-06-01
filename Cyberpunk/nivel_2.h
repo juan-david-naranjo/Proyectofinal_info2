@@ -39,6 +39,8 @@ struct ZonaOculta {
 class Nivel_2 : public Nivel
 {
 public:
+
+    bool sinVidas = false;
     QPixmap *Escenario;
     Nivel_2();
     ~Nivel_2() override;
@@ -74,6 +76,7 @@ private:
     int   vidasN2Max      = 4;        // máximo de vidas
     float tiempoInvulnerable = 0.f;   // contador de iframes tras recibir daño
     static constexpr float DURACION_INVULNERABLE = 1.5f;  // segundos sin poder ser dañado
+    QGraphicsRectItem* debugJugadorRect = nullptr;
 
 
     // ── HUD ───────────────────────────────────────────────────────────────────
@@ -110,10 +113,8 @@ private:
     float objetivoX;
     float objetivoY;
     float objetivoRadio;
-
     float spawnX;
     float spawnY;
-
     float tiempoContador;     /// Acumulador para descontar tiempoRestante cada segundo
 
 
@@ -122,13 +123,13 @@ private:
     QGraphicsScene*              escena;          ///< Referencia a la escena actual
 
 
-
+    std::vector<QGraphicsRectItem*> debugRobotsRect;        //hitbox robot
 
 
     // Ítems visuales (propiedad de la escena, no los borramos)
-    std::vector<QGraphicsItem*>    itemsParedes;    ///< Rectángulos de las paredes
-    QGraphicsPixmapItem* itemObjetivo;
-    std::vector<QGraphicsEllipseItem*> itemsDeteccion;  ///< Círculos de detección por robot
+    std::vector<QGraphicsItem*>    itemsParedes;    //< Rectángulos de las paredes
+    QGraphicsPixmapItem* itemObjetivo;                 //computadora
+    std::vector<QGraphicsEllipseItem*> itemsDeteccion; //< Círculos de detección por robot
 
 
     void generarLaberinto();

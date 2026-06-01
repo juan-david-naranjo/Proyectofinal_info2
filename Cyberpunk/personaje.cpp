@@ -246,16 +246,16 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 
     // ── 7. Seleccionar frames activos y avanzar animación ─────
     QVector<QPixmap>* frames = nullptr;
-    switch (estadoAnim)
-    {
-    case EstadoAnim::IDLE:         frames = &n1_framesIdle;        break;
-    case EstadoAnim::CORRIENDO:    frames = &n1_framesCorriendo;   break;
-    case EstadoAnim::SALTANDO:     frames = &n1_framesSaltando;    break;
-    case EstadoAnim::DOBLE_SALTO:  frames = &n1_framesDobleSalto;  break;
-    case EstadoAnim::VIENTO_CAIDA: frames = &n1_framesVientoCalda; break;
-    case EstadoAnim::COLISION:     frames = &n1_framesColision;    break;
-    default:                       frames = &n1_framesIdle;        break;
-    }
+    // switch (estadoAnim)
+    // {
+    // case EstadoAnim::IDLE:         frames = &n1_framesIdle;        break;
+    // case EstadoAnim::CORRIENDO:    frames = &n1_framesCorriendo;   break;
+    // case EstadoAnim::SALTANDO:     frames = &n1_framesSaltando;    break;
+    // case EstadoAnim::DOBLE_SALTO:  frames = &n1_framesDobleSalto;  break;
+    // case EstadoAnim::VIENTO_CAIDA: frames = &n1_framesVientoCalda; break;
+    // case EstadoAnim::COLISION:     frames = &n1_framesColision;    break;
+    // default:                       frames = &n1_framesIdle;        break;
+    // }
 
     bool loop = (estadoAnim != EstadoAnim::DOBLE_SALTO); // doble salto no looea
     //if (frames) tickAnimacion(dt, *frames, loop);
@@ -716,6 +716,12 @@ void Personaje::resetearPosicion(float rx, float ry)
     tiempoViento    = 0.f;
     estadoAnim      = EstadoAnim::IDLE;
     frameActual     = 0;
+
+    std::fill(std::begin(keys), std::end(keys), false);
+    deslizando   = false;
+    boostActivo  = false;
+    tiempoDesliz = 0.f;
+    tiempoBoost  = 0.f;
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
@@ -727,8 +733,8 @@ void Personaje::setHitboxOffset(float offsetX,float offsetY, float anchoEfectivo
     hitboxAnchoReal = anchoEfectivo;
     ANCHO  = anchoEfectivo;
     ALTO  = altoEfectivo;
-    x = offsetX;
-    y = offsetY;
+    // x = offsetX;
+    // y = offsetY;
 
 
 }

@@ -90,6 +90,7 @@ private:
     void pausar();
     void reanudar();
     void mostrarVictoria();
+    // void onReiniciar();
 
     // ── UI helpers ────────────────────────────────────────────
     void limpiarOverlay();
@@ -97,6 +98,8 @@ private:
     void mostrarPantallaPausa();
     void mostrarPantallaVictoria();
     void agregarFondoOverlay();
+    void mostrarGameOver();
+
 
     QGraphicsTextItem* agregarTextoOverlay(const QString& texto,
                                            QColor color, int tamano,
