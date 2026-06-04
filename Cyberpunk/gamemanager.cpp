@@ -37,6 +37,7 @@ GameManager::~GameManager()
 {
     timer->stop();
     musicaMenu.stop();
+    limpiarOverlay(); // <--- ¡Añadido para evitar fugas de botones y textos!
     delete nivel1;
     delete nivel2;
     delete jugador;

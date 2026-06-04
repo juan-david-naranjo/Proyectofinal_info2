@@ -29,8 +29,22 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    // 1. PRIMERO matamos al GameManager.
+    // Como la escena todavía está viva, el GameManager puede limpiar
+    // su overlay, sus robots y sus personajes de la escena sin provocar un Crash.
+    if (gameManager != nullptr) {
+        delete gameManager;
+        gameManager = nullptr;
+    }
+
+    // 2. AHORA SÍ, con la escena completamente vacía y segura, la destruimos.
+    if (scena != nullptr) {
+        delete scena;
+        scena = nullptr;
+    }
+
+    // 3. Por último, destruimos la interfaz visual.
     delete ui;
-    // gameManager es hijo de this (QObject parent), Qt lo destruye solo
 }
 
 // ── Reenviar teclado al GameManager ──────────────────────────
