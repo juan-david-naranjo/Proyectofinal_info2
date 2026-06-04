@@ -213,6 +213,9 @@ void RobotSeguridad::percibir(float jx, float jy)
     float dx     = jx - x;
     float dy     = jy - y;
     distanciaJugador = std::sqrt(dx*dx + dy*dy);
+    // ← NUEVO: señal de captura (misma geometría que antes en verificarDeteccion)
+    if (GestorFisicas::colisionCirculo(x + 10.f, y + 10.f, jx, jy, RADIO_CAPTURA))
+        capturado = true;
 }
 
 float RobotSeguridad::calcularDistancia() const
@@ -365,26 +368,91 @@ bool RobotSeguridad::posicionLibre(float px, float py, float tam) const
 //  5. ¿Nada? → frenar (stuck detector tomará el relevo)
 // ════════════════════════════════════════════════════════════════════════════
 // moverHaciaConEvacion igual que antes pero sin el parámetro paredes
+// void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
+// {
+//     // ── PROTECCIÓN: Si el objetivo es un fantasma de la memoria, abortamos
+//     if (!std::isfinite(tx) || !std::isfinite(ty)) {
+//         Vx = 0.f; Vy = 0.f;
+//         return;
+//     }
+//     float velActual = (estado == EstadoAgente::PERSECUCION)
+//     ? velPersecucion : velPatrulla;
+//     float dx = tx - x, dy = ty - y;
+//     float dist = std::sqrt(dx*dx + dy*dy);
+//     //if (dist < 1.f) { Vx = 0.f; Vy = 0.f; return; }
+//     // ── PROTECCIÓN: Validar que la distancia sea real y suficiente
+//     if (!std::isfinite(dist) || dist < 1.f) {
+//         Vx = 0.f; Vy = 0.f;
+//         return;
+//     }
+
+//     float nx = dx / dist, ny = dy / dist;
+//     const float TAM = 32.f, SONDA = TAM * 1.5f;
+
+//     bool diagLibre = posicionLibre(x + nx*SONDA, y + ny*SONDA, TAM);
+//     bool xLibre    = posicionLibre(x + nx*SONDA, y,            TAM);
+//     bool yLibre    = posicionLibre(x,            y + ny*SONDA, TAM);
+
+//     float targetVx, targetVy;
+
+//     if (diagLibre)
+//     { targetVx = nx * velActual; targetVy = ny * velActual; }
+//     else if (xLibre && !yLibre)
+//     { targetVx = nx * velActual; targetVy = 0.f; }
+//     else if (yLibre && !xLibre)
+//     { targetVx = 0.f;            targetVy = ny * velActual; }
+//     else if (xLibre && yLibre)
+//     {
+//         if (std::abs(dx) >= std::abs(dy))
+//         { targetVx = nx * velActual; targetVy = 0.f; }
+//         else
+//         { targetVx = 0.f;            targetVy = ny * velActual; }
+//     }
+//     else
+//     {
+//         float p1x = -ny, p1y =  nx;
+//         float p2x =  ny, p2y = -nx;
+//         if (posicionLibre(x + p1x*SONDA, y + p1y*SONDA, TAM))
+//         { targetVx = p1x * velActual; targetVy = p1y * velActual; }
+//         else if (posicionLibre(x + p2x*SONDA, y + p2y*SONDA, TAM))
+//         { targetVx = p2x * velActual; targetVy = p2y * velActual; }
+//         else
+//         { Vx = 0.f; Vy = 0.f; return; }
+//     }
+
+
+//     //qDebug() << "mostrando robot antes de aplicarInercia en moverhaciaE: " << x << " y: " << y;
+//     GestorFisicas::aplicarInercia(Vx, targetVx, dt);
+//     GestorFisicas::aplicarInercia(Vy, targetVy, dt);
+//     x += Vx * dt;
+//     y += Vy * dt;
+//     //qDebug() << "mostrando robot despues de aplicarInercia MoverhaciaE: " << x << " y: " << y;
+// }
 void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
 {
-    // ── PROTECCIÓN: Si el objetivo es un fantasma de la memoria, abortamos
     if (!std::isfinite(tx) || !std::isfinite(ty)) {
         Vx = 0.f; Vy = 0.f;
         return;
     }
+
     float velActual = (estado == EstadoAgente::PERSECUCION)
-    ? velPersecucion : velPatrulla;
+                          ? velPersecucion : velPatrulla;
+
     float dx = tx - x, dy = ty - y;
     float dist = std::sqrt(dx*dx + dy*dy);
-    //if (dist < 1.f) { Vx = 0.f; Vy = 0.f; return; }
-    // ── PROTECCIÓN: Validar que la distancia sea real y suficiente
+
     if (!std::isfinite(dist) || dist < 1.f) {
         Vx = 0.f; Vy = 0.f;
         return;
     }
 
     float nx = dx / dist, ny = dy / dist;
-    const float TAM = 32.f, SONDA = TAM * 1.5f;
+    const float TAM = 32.f;
+
+    // ── FIX 1: Sonda adaptativa ───────────────────────────────────────────────
+    // Si el robot está más cerca que TAM*1.5 del objetivo, la sonda se acorta
+    // al propio destino — evita detectar paredes que están DESPUÉS del waypoint.
+    const float SONDA = std::min(TAM * 1.5f, dist);
 
     bool diagLibre = posicionLibre(x + nx*SONDA, y + ny*SONDA, TAM);
     bool xLibre    = posicionLibre(x + nx*SONDA, y,            TAM);
@@ -393,20 +461,39 @@ void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
     float targetVx, targetVy;
 
     if (diagLibre)
-    { targetVx = nx * velActual; targetVy = ny * velActual; }
-    else if (xLibre && !yLibre)
-    { targetVx = nx * velActual; targetVy = 0.f; }
-    else if (yLibre && !xLibre)
-    { targetVx = 0.f;            targetVy = ny * velActual; }
+    {
+        targetVx = nx * velActual;
+        targetVy = ny * velActual;
+    }
+    // ── FIX 2: Guard de componente cero ──────────────────────────────────────
+    // Deslizar en X solo tiene sentido si hay componente horizontal real (nx ≠ 0).
+    // Si nx ≈ 0 (movimiento puramente vertical), targetVx = 0 → robot parado.
+    // En ese caso caer directo a las perpendiculares.
+    else if (xLibre && !yLibre && std::abs(nx) > 0.05f)
+    {
+        targetVx = nx * velActual;
+        targetVy = 0.f;
+    }
+    else if (yLibre && !xLibre && std::abs(ny) > 0.05f)
+    {
+        targetVx = 0.f;
+        targetVy = ny * velActual;
+    }
     else if (xLibre && yLibre)
     {
-        if (std::abs(dx) >= std::abs(dy))
+        // Ambos ejes libres: preferir el de mayor delta,
+        // pero solo si el componente correspondiente es significativo
+        if (std::abs(dx) >= std::abs(dy) && std::abs(nx) > 0.05f)
         { targetVx = nx * velActual; targetVy = 0.f; }
+        else if (std::abs(ny) > 0.05f)
+        { targetVx = 0.f; targetVy = ny * velActual; }
         else
-        { targetVx = 0.f;            targetVy = ny * velActual; }
+        { targetVx = nx * velActual; targetVy = ny * velActual; }
     }
     else
     {
+        // Camino directo bloqueado Y componente demasiado pequeño:
+        // probar perpendicular izquierda y derecha
         float p1x = -ny, p1y =  nx;
         float p2x =  ny, p2y = -nx;
         if (posicionLibre(x + p1x*SONDA, y + p1y*SONDA, TAM))
@@ -417,15 +504,11 @@ void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
         { Vx = 0.f; Vy = 0.f; return; }
     }
 
-
-    qDebug() << "mostrando robot antes de aplicarInercia en moverhaciaE: " << x << " y: " << y;
     GestorFisicas::aplicarInercia(Vx, targetVx, dt);
     GestorFisicas::aplicarInercia(Vy, targetVy, dt);
     x += Vx * dt;
     y += Vy * dt;
-    qDebug() << "mostrando robot despues de aplicarInercia MoverhaciaE: " << x << " y: " << y;
 }
-
 
 // ── TICK (método completo para el nivel) ─────────────────────────────────────
 // void RobotSeguridad::tick(float jx, float jy, float dt)

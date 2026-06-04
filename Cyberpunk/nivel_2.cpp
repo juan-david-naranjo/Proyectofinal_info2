@@ -48,8 +48,6 @@ Nivel_2::Nivel_2(const Nivel_2& otro)
     , objetivoRadio(otro.objetivoRadio)
     , spawnX(otro.spawnX)
     , spawnY(otro.spawnY)
-    , vidasN2(otro.vidasN2)             //pendiente revisar
-    , vidasN2Max(otro.vidasN2Max)         //pendiente
     , tiempoInvulnerable(otro.tiempoInvulnerable)
     , tiempoHackeo(otro.tiempoHackeo)
     , tiempoHackeoMax(otro.tiempoHackeoMax)
@@ -85,7 +83,6 @@ bool Nivel_2::operator==(const Nivel_2& otro) const
 {
     // Iguales si el estado lógico del nivel coincide
     return Nivel::operator==(otro)
-           && vidasN2 == otro.vidasN2
            && sinVidas == otro.sinVidas;
 }
 
@@ -122,15 +119,15 @@ void Nivel_2::setDifficult(int dificult)
         // 2 - dificil
     case 0:
         tiempoRestante = EASY_DIFICULT;
-        vidasN2 = 3;
+
         break;
     case 1:
         tiempoRestante=MED_DIFICULT;
-        vidasN2 = 3;
+
         break;
     case 2:
         tiempoRestante=MAX_DIFICULT;
-        vidasN2 = 1;
+
         break;
     default:
         break;
@@ -147,17 +144,18 @@ void Nivel_2::setDifficult(int dificult)
 void Nivel_2::inicializar(Personaje* p)
 {
 
+    tiempoInvulnerable = 0.f;
+    tiempoRestante     = 120;        // ← bug de timer resuelto de paso
+    tiempoContador     = 0.f;
+    haciendoHackeo     = false;
+    tiempoHackeo       = 0.f;
     jugador = p;
     jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
-    loadDestAnim();
+    loadDestAnim();         //animacion de destruccion de computadora
 
     generarLaberinto();
     generarRobots();
 
-    // jugador->setVidas(vidasN2Max);      //cantidad de vidas en este nivel
-
-    vidasN2 = vidasN2Max;           //modificable
-    tiempoInvulnerable = 0.f;
 
     if (jugador)
         jugador->resetearPosicion(spawnX, spawnY);
@@ -428,11 +426,12 @@ void Nivel_2::actualizarHUD()
 
         itemHUDTimer->setPlainText(txt);
     }
+    int vidasActuales=jugador->getVidas();
 
     // ── Corazones ─────────────────────────────────────────────────────────
     for (int i = 0; i < static_cast<int>(itemsCorazones.size()); i++)
     {
-        if (i < vidasN2)
+        if (i < vidasActuales)
             // Vida activa: rojo
             itemsCorazones[i]->setBrush(QBrush(QColor(220, 40, 40)));
         else
@@ -714,14 +713,17 @@ void Nivel_2::actualizar(float dt)
             if (jugador->getItem()) jugador->getItem()->setVisible(visible);
         }
     }
+
     else if (jugador->getItem() && !jugador->getItem()->isVisible()
              && !jugadorCompletamenteOculto)   // ← solo restaura si no está oculto
     {
         jugador->getItem()->setVisible(true);
     }
-
-
-
+    //verificar derrota
+    if(this->getTiempoRestante()<=0){
+        sinVidas=true;
+        qDebug()<<"perdiste por tiempo";
+    }
 
 
     // ── Comprobar condiciones de fin ──────────────────────────────────────
@@ -746,7 +748,7 @@ void Nivel_2::actualizar(float dt)
 // ── Detección: si un robot toca al jugador → daño + respawn ──────────────────
 void Nivel_2::verificarDeteccion()
 {
-    if (!jugador) return;
+
 
     // ── Detectar CAMBIO de estado PATRULLAJE → PERSECUCION ────────────────
     // Se compara el estado actual con el del tick anterior.
@@ -759,34 +761,37 @@ void Nivel_2::verificarDeteccion()
             estadoActual          == EstadoAgente::PERSECUCION)
         {
             sonidoDeteccion.play();   // ¡Robot te vio!
+            musicaFondo.stop();
         }
 
         estadosAnteriores[i] = estadoActual;  // actualizar para el próximo tick
     }
 
-    // ── Colisión robot → jugador : daño + respawn ─────────────────────────
-    float jx = jugador->getX() + jugador->getAncho() * 0.5f;
-    float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
-
     for (RobotSeguridad* robot : robots)
     {
-        if (GestorFisicas::colisionCirculo(
-                robot->getX() + 16.f, robot->getY() + 16.f,
-                jx, jy, 30.f))
-        {
+        if (!robot->atrapoJugador()) continue;
+        robot->resetCaptura();   // siempre consumir la señal, haya daño o no
+
+        if (!jugador) return;
+        if (tiempoInvulnerable > 0.f) continue;  // iframes activos → ignorar
+
+         jugador->recibirDanio(1);
+         sonidoDanio.play();
+         tiempoInvulnerable = DURACION_INVULNERABLE;
+
 
             // ── Recibir daño ──────────────────────────────────────────────
-            vidasN2--;
             sonidoDanio.play();
             tiempoInvulnerable = DURACION_INVULNERABLE;  // activar iframes
 
-            if (vidasN2 <= 0)
+            if (jugador->getVidas() <= 0)
             {
-                // Sin vidas → respawn y resetear todo
+                qDebug()<<"Se acabo el juego";
                 sinVidas = true;
                 sonidoHackeoLoop.stop();
                 musicaFondo.stop();
-            }
+
+
             break;
         }
     }
@@ -1330,7 +1335,9 @@ void Nivel_2::addHudScene()
 
     // ── HUD: Corazones arriba a la izquierda ──────────────────────────────────
     itemsCorazones.clear();
-    for (int i = 0; i < vidasN2Max; i++)
+
+    int vidasPorNivel=4;
+    for (int i = 0; i < vidasPorNivel; i++)
     {
         QGraphicsEllipseItem* corazon = new QGraphicsEllipseItem(0, 0, 22, 22);
         corazon->setBrush(QBrush(QColor(220, 40, 40)));    // rojo = vida activa
@@ -1340,7 +1347,6 @@ void Nivel_2::addHudScene()
         escena->addItem(corazon);
         itemsCorazones.push_back(corazon);
     }
-
     // ── Sprites de zonas ocultas ──────────────────────────────────────────────
     itemsZonaSprites.clear();
     for (const auto& z : zonasOcultas)
@@ -1352,6 +1358,9 @@ void Nivel_2::addHudScene()
         itemsZonas.push_back(item);        // para cleanup en limpiarEscena
         itemsZonaSprites.push_back(item);
     }
+
+
+
 }
 
 void Nivel_2::actualizarZonasOcultas(float dt)

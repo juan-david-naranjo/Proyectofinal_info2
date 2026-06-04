@@ -747,6 +747,7 @@ void Personaje::recibirDanio(int cantidad)
 {
     vidas -= cantidad;
     if (vidas < 0) vidas = 0;
+    qDebug() << "Kael recibio daño. Vidas restantes:" << vidas;
 }
 
 void Personaje::resetearPosicion(float rx, float ry)
@@ -784,6 +785,7 @@ void Personaje::setHitboxOffset(float offsetX,float offsetY, float anchoEfectivo
 void Personaje::setVidas(int cantidad)
 {
     vidas=cantidad;
+    qDebug() << "Vidas de Kael inicializadas en:" << vidas;
 }
 
 // ============================================================

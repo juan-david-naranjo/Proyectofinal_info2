@@ -60,8 +60,8 @@ public:
     void razonar(bool jugadorOculto = false) ;
     void actuar(float dt) override;
 
-    // Método completo que el nivel llama cada tick
-    // void tick(float jugadorX, float jugadorY, float dt);
+    bool atrapoJugador() const { return capturado; }
+    void resetCaptura()        { capturado = false; }
 
     //void tick(float jx, float jy, float dt, bool jugadorOculto = false);
     void tick(float jx, float jy, float dt, bool jugadorOculto,
@@ -96,7 +96,8 @@ private:
     float radioDesenganche;
     float velPatrulla;
     float velPersecucion;
-
+    bool capturado = false;
+    static constexpr float RADIO_CAPTURA = 60.f;
     // Miembros privados nuevos (sección private)
     std::vector<QPixmap> framesPatrullaje;
     std::vector<QPixmap> framesAlert;

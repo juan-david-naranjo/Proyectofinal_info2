@@ -162,6 +162,7 @@ void GameManager::irANivel2()
     nivel2->limpiarEscena();
     escena->clear();
     nivel2->setScene(escena);
+    jugador->setVidas(4);                       //vidas default
     nivel2->inicializar(jugador);
     vista->setAlignment(Qt::AlignCenter);
     vista->fitInView(escena->sceneRect(), Qt::KeepAspectRatio);

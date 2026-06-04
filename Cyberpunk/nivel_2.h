@@ -114,10 +114,8 @@ private:
 
 
     // ── Sistema de daño con invulnerabilidad ──────────────────────────────────
-    int   vidasN2=4;                    // vidas del nivel (independiente de Personaje)
-    int   vidasN2Max      = 4;        // máximo de vidas
     float tiempoInvulnerable = 0.f;   // contador de iframes tras recibir daño
-    static constexpr float DURACION_INVULNERABLE = 1.5f;  // segundos sin poder ser dañado
+    static constexpr float DURACION_INVULNERABLE = 2.5f;  // segundos sin poder ser dañado
     QGraphicsRectItem* debugJugadorRect = nullptr;
 
 
