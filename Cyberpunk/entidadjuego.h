@@ -72,7 +72,7 @@ public:
 
 
     //----------Getters-----------
-    float getX()     const;
+    float getX()     const;     //faltaba esta linea
     float getY()     const;
     float getVx()    const;
     float getVy()    const;

@@ -165,6 +165,11 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
 
 void RobotSeguridad::moverHacia(float tx, float ty, float dt)
 {
+    // ── PROTECCIÓN: Si el objetivo es un fantasma de la memoria, abortamos
+    if (!std::isfinite(tx) || !std::isfinite(ty)) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
     float velActual = (estado == EstadoAgente::PERSECUCION)
     ? velPersecucion
     : velPatrulla;
@@ -172,6 +177,11 @@ void RobotSeguridad::moverHacia(float tx, float ty, float dt)
     float dx = tx - x;
     float dy = ty - y;
     float dist = std::sqrt(dx*dx + dy*dy);
+    // ── PROTECCIÓN: Validar que la distancia sea real y suficiente
+    if (!std::isfinite(dist) || dist < 1.f) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
 
     if (dist < 1.f) { Vx = 0; Vy = 0; return; }
 
@@ -181,13 +191,14 @@ void RobotSeguridad::moverHacia(float tx, float ty, float dt)
 
     float targetVx = nx * velActual;
     float targetVy = ny * velActual;
-
+    //qDebug() << "mostrando robot antes de aplicarInercia en moverhacia: " << x << " y: " << y;
     // Aplicar inercia (MRUA)
     GestorFisicas::aplicarInercia(Vx, targetVx, dt);
     GestorFisicas::aplicarInercia(Vy, targetVy, dt);
 
     x += Vx * dt;
     y += Vy * dt;
+    //qDebug() << "mostrando robot despues de aplicarInercia en moverhacia: " << x << " y: " << y;
 }
 
 
@@ -265,7 +276,7 @@ void RobotSeguridad::actuar(float dt){
         if (dist < 8.f)
             indiceWaypoint = (indiceWaypoint + 1) % static_cast<int>(waypoints.size());
         else
-            moverHacia(objetivo.x, objetivo.y, dt);
+            moverHaciaConEvacion(objetivo.x, objetivo.y, dt);
         break;
     }
     case EstadoAgente::PERSECUCION:
@@ -323,6 +334,8 @@ void RobotSeguridad::actuar(float dt){
             itemGrafico->setPixmap(frames->at(frameActual));
         }
         //qDebug("aqui esta tirando error 383");
+        // qDebug()<<"robot N: ";
+        // qDebug()<<"Coordenadas P(x,y) ("<<itemGrafico->x()<<","<<itemGrafico->y()<<")";
         itemGrafico->setPos(x, y);
     }
 }
@@ -354,11 +367,21 @@ bool RobotSeguridad::posicionLibre(float px, float py, float tam) const
 // moverHaciaConEvacion igual que antes pero sin el parámetro paredes
 void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
 {
+    // ── PROTECCIÓN: Si el objetivo es un fantasma de la memoria, abortamos
+    if (!std::isfinite(tx) || !std::isfinite(ty)) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
     float velActual = (estado == EstadoAgente::PERSECUCION)
     ? velPersecucion : velPatrulla;
     float dx = tx - x, dy = ty - y;
     float dist = std::sqrt(dx*dx + dy*dy);
-    if (dist < 1.f) { Vx = 0.f; Vy = 0.f; return; }
+    //if (dist < 1.f) { Vx = 0.f; Vy = 0.f; return; }
+    // ── PROTECCIÓN: Validar que la distancia sea real y suficiente
+    if (!std::isfinite(dist) || dist < 1.f) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
 
     float nx = dx / dist, ny = dy / dist;
     const float TAM = 32.f, SONDA = TAM * 1.5f;
@@ -394,10 +417,13 @@ void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
         { Vx = 0.f; Vy = 0.f; return; }
     }
 
+
+    qDebug() << "mostrando robot antes de aplicarInercia en moverhaciaE: " << x << " y: " << y;
     GestorFisicas::aplicarInercia(Vx, targetVx, dt);
     GestorFisicas::aplicarInercia(Vy, targetVy, dt);
     x += Vx * dt;
     y += Vy * dt;
+    qDebug() << "mostrando robot despues de aplicarInercia MoverhaciaE: " << x << " y: " << y;
 }
 
 

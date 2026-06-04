@@ -48,8 +48,8 @@ Nivel_2::Nivel_2(const Nivel_2& otro)
     , objetivoRadio(otro.objetivoRadio)
     , spawnX(otro.spawnX)
     , spawnY(otro.spawnY)
-    , vidasN2(otro.vidasN2)
-    , vidasN2Max(otro.vidasN2Max)
+    , vidasN2(otro.vidasN2)             //pendiente revisar
+    , vidasN2Max(otro.vidasN2Max)         //pendiente
     , tiempoInvulnerable(otro.tiempoInvulnerable)
     , tiempoHackeo(otro.tiempoHackeo)
     , tiempoHackeoMax(otro.tiempoHackeoMax)
@@ -594,8 +594,10 @@ void Nivel_2::actualizar(float dt)
     bool oculto = jugadorEnSombra();
 
     // // ── Tick robots: centro del jugador + flag de sombra ─────────────────
+
     float jx = jugador->getX() + jugador->getAncho() * 0.5f;
     float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
+
 
     std::vector<Hitbox> hbParedes;
     hbParedes.reserve(plataformas.size());
@@ -603,28 +605,54 @@ void Nivel_2::actualizar(float dt)
         hbParedes.push_back(p->getHitbox());
 
     // Luego en el bucle:
+    int i = 0;
     for (RobotSeguridad* robot : robots)
     {
+        // qDebug() << "Robot N: " << i;
+        //qDebug() << "mostrando robot antes de tick: " << robot->getX() << " y: " << robot->getY();
+        // 1. Ejecutar el ciclo de movimiento e IA del agente
         robot->tick(jx, jy, dt, oculto, hbParedes);
 
-        // Colisiones del robot con paredes
+        // 2. Extraer los datos iniciales tras el movimiento
         float rx  = robot->getX();
         float ry  = robot->getY();
         float rvx = robot->getVx();
         float rvy = robot->getVy();
-        bool  dummy = false;
+        bool dummy = false;
+
+        //qDebug() << "mostrando robot despues de tick " << rx << " y: " << ry;
+        //qDebug() << "mostrando robot antes de colisiones x: " << rx << " y: " << ry;
+        // 3. ¡LA CLAVE! Creamos una Hitbox temporal para el Robot en este frame.
+        // De esta manera, cada modificación se aplica sobre la caja contenedora
+        // de forma consistente antes de evaluar la siguiente plataforma.
+        Hitbox hbRobot(rx, ry, 32.f, 32.f);
 
         for (Plataforma* plat : plataformas)
         {
+            if (!plat) continue;
             Hitbox hbPlat = plat->getHitbox();
-            GestorFisicas::resolverColision(
-                rx, ry, 32.f, 32.f,
-                rvx, rvy, dummy,
-                hbPlat.x, hbPlat.y, hbPlat.w, hbPlat.h);
+
+            // Optimizador de distancia: Si la plataforma está lejísimos, no la calcules
+            if (std::abs(hbPlat.x - rx) > 150.f || std::abs(hbPlat.y - ry) > 150.f)
+                continue;
+
+            //Usamos tu segunda función (la sobrecarga ergonómica de Hitbox)
+            GestorFisicas::resolverColision(hbRobot, rvx, rvy, dummy, hbPlat);
         }
+        //qDebug() << "mostrando robot despues de todas las colisiones x: " << rx << " y: " << ry;
+        // 4. Una vez que salió del bucle y rebotó contra todo de forma estable,
+        // extraemos la posición final real de la Hitbox.
+        rx = hbRobot.x;
+        ry = hbRobot.y;
+
+
+
+        // 5. Guardar en el objeto real
         robot->setPosicion(rx, ry);
         robot->setVelocidad(rvx, rvy);
-    };
+
+        i++;
+    }
     // // ── 3. HITBOX ROBOTS: actualizar posición de los rects debug ─────────────
     // for (int i = 0; i < static_cast<int>(robots.size()) &&
     //                 i < static_cast<int>(debugRobotsRect.size()); i++)
@@ -1183,8 +1211,7 @@ void Nivel_2::addRobotScene()
         escena->addItem(spriteItem);
 
 
-        qDebug()<<"robot N: "<<i;
-        qDebug()<<"Coordenadas P(x,y) ("<<spriteItem->x()<<","<<spriteItem->y()<<")";
+
 
         // ── Círculo de detección visual ────────────────────────────────────────
         float rd = robot->getRadioDeteccion();

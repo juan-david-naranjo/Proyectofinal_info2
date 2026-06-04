@@ -5,6 +5,8 @@ EntidadJuego::EntidadJuego() {}
 EntidadJuego::EntidadJuego(float X, float Y) {
     x=X;
     y=Y;
+    Vx=0.f;
+    Vy=0.f;
     itemGrafico=nullptr;
 }
 
