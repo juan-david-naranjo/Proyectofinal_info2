@@ -168,7 +168,7 @@ void Nivel_2::inicializar(Personaje* p)
     playMusic();
 
     if (escena)
-         agregarItemsEscena();
+        agregarItemsEscena();
 }
 
 // ── Generar paredes del laberinto ─────────────────────────────────────────────
@@ -188,23 +188,23 @@ void Nivel_2::generarLaberinto()
 
     // ── Paredes internas del laberinto (vista cenital) ────────────────────
     // Estructura: {x, y, ancho, alto}
-     struct Wall { float x, y, w, h; Plataforma::TipoMuro tipo; };
+    struct Wall { float x, y, w, h; Plataforma::TipoMuro tipo; };
     static const Wall paredes[] =
         {
-        {  292.f, 202.f, 1003.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
-        {   16.f, 236.f,  189.f,  16.f, Plataforma::TipoMuro::HORIZONTAL },
-        {  312.f, 586.f,  334.f,  20.f, Plataforma::TipoMuro::HORIZONTAL },
-        {  771.f, 586.f,  524.f,  20.f, Plataforma::TipoMuro::HORIZONTAL },
-        {  451.f, 460.f,  340.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
-        // Verticales
-        {  292.f, 202.f,   20.f, 403.f, Plataforma::TipoMuro::VERTICAL   },
-        {  771.f, 486.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
-        {  451.f, 360.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
-        {  617.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
-        {  727.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
-        {  873.f, 217.f,   15.f, 250.f, Plataforma::TipoMuro::VERTICAL   },
-        { 1034.f, 386.f,   15.f, 200.f, Plataforma::TipoMuro::VERTICAL   },
-          };
+         {  292.f, 202.f, 1003.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
+         {   16.f, 236.f,  189.f,  16.f, Plataforma::TipoMuro::HORIZONTAL },
+         {  312.f, 586.f,  334.f,  20.f, Plataforma::TipoMuro::HORIZONTAL },
+         {  771.f, 586.f,  524.f,  20.f, Plataforma::TipoMuro::HORIZONTAL },
+         {  451.f, 460.f,  340.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
+         // Verticales
+         {  292.f, 202.f,   20.f, 403.f, Plataforma::TipoMuro::VERTICAL   },
+         {  771.f, 486.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+         {  451.f, 360.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+         {  617.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+         {  727.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+         {  873.f, 217.f,   15.f, 250.f, Plataforma::TipoMuro::VERTICAL   },
+         { 1034.f, 386.f,   15.f, 200.f, Plataforma::TipoMuro::VERTICAL   },
+         };
 
     for (const auto& w : paredes)
         plataformas.push_back(
@@ -226,7 +226,7 @@ void Nivel_2::generarRobots()
 
     // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
     std::vector<Punto2D> wp1 = {
-                                {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{500.f,96.f}
+        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{500.f,96.f}
     };
 
     //{196.f, 96.f}, {956.f, 96.f},
@@ -241,9 +241,9 @@ void Nivel_2::generarRobots()
 
     // ── Robot 2: patrulla el sector central ──────────────────────────────
     std::vector<Punto2D> wp2 = {
-                                {1253.f, 715.f}, {184.f, 715.f},
-                                {700.f, 715.f}, {700.f, 512.f},
-                                {700.f,715.f}
+        {1253.f, 715.f}, {184.f, 715.f},
+        {700.f, 715.f}, {700.f, 512.f},
+        {700.f,715.f}
     };
     robots.push_back(new RobotSeguridad(
         1253.f, 700.f,
@@ -701,7 +701,7 @@ void Nivel_2::actualizar(float dt)
     actualizarHUD();
 
     // 1. Agregar llamada a actualizarZonasOcultas (antes de verificarDeteccion):
-        actualizarZonasOcultas(dt);
+    actualizarZonasOcultas(dt);
 
     // 2. Corregir el parpadeo de iframes para que no interfiera con el ocultamiento:
     if (tiempoInvulnerable > 0.f)
@@ -775,21 +775,21 @@ void Nivel_2::verificarDeteccion()
         if (!jugador) return;
         if (tiempoInvulnerable > 0.f) continue;  // iframes activos → ignorar
 
-         jugador->recibirDanio(1);
-         sonidoDanio.play();
-         tiempoInvulnerable = DURACION_INVULNERABLE;
+        jugador->recibirDanio(1);
+        sonidoDanio.play();
+        tiempoInvulnerable = DURACION_INVULNERABLE;
 
 
-            // ── Recibir daño ──────────────────────────────────────────────
-            sonidoDanio.play();
-            tiempoInvulnerable = DURACION_INVULNERABLE;  // activar iframes
+        // ── Recibir daño ──────────────────────────────────────────────
+        sonidoDanio.play();
+        tiempoInvulnerable = DURACION_INVULNERABLE;  // activar iframes
 
-            if (jugador->getVidas() <= 0)
-            {
-                qDebug()<<"Se acabo el juego";
-                sinVidas = true;
-                sonidoHackeoLoop.stop();
-                musicaFondo.stop();
+        if (jugador->getVidas() <= 0)
+        {
+            qDebug()<<"Se acabo el juego";
+            sinVidas = true;
+            sonidoHackeoLoop.stop();
+            musicaFondo.stop();
 
 
             break;
@@ -810,7 +810,7 @@ bool Nivel_2::jugadorEnSombra() const
     //         return true;
 
     // return false;
-     return jugadorCompletamenteOculto;   // solo oculto REAL, no solo estar en la zona
+    return jugadorCompletamenteOculto;   // solo oculto REAL, no solo estar en la zona
 }
 
 

@@ -60,7 +60,8 @@ void Nivel::resolverColisiones()
         if (toco)
         {
             // Propagar posición resuelta de la hitbox al personaje
-            jugador->setPosicion(hbJugador.x, hbJugador.y);
+            jugador->setPosicion(hbJugador.x - jugador->getHitboxOffsetX(),
+            hbJugador.y - jugador->getHitboxOffsetY());
             jugador->setVelocidad(vx, vy);
             if (enSuelo)
                 jugador->aterrizarEnSuelo(plat->getY());

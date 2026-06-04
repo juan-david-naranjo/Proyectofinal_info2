@@ -171,8 +171,8 @@ void RobotSeguridad::moverHacia(float tx, float ty, float dt)
         return;
     }
     float velActual = (estado == EstadoAgente::PERSECUCION)
-    ? velPersecucion
-    : velPatrulla;
+                          ? velPersecucion
+                          : velPatrulla;
 
     float dx = tx - x;
     float dy = ty - y;
@@ -228,7 +228,7 @@ float RobotSeguridad::calcularDistancia() const
 
 void RobotSeguridad::razonar(bool jugadorOculto)
 {
-     //qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
+    //qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
     switch (estado)
     {
     case EstadoAgente::PATRULLAJE:
@@ -556,4 +556,5 @@ void RobotSeguridad::actualizarWaypoints()
 
 // ── MOVIMIENTO CON INERCIA ───────────────────────────────────────────────────
 // Mueve el robot hacia (tx, ty) usando MRUA en ambos ejes.
+
 

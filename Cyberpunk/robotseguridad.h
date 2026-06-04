@@ -83,8 +83,8 @@ public:
 
     QPixmap getPrimerFrame() const
     {
-         if (!framesPatrullaje.empty()) return framesPatrullaje.at(0);
-         return QPixmap();
+        if (!framesPatrullaje.empty()) return framesPatrullaje.at(0);
+        return QPixmap();
     }
 
     void cargarSprites(const QPixmap& sheet);
@@ -101,27 +101,27 @@ private:
     // Miembros privados nuevos (sección private)
     std::vector<QPixmap> framesPatrullaje;
     std::vector<QPixmap> framesAlert;
-     int   frameActual            = 0;
-     float tiempoFrame            = 0.f;
-     float duracionFramePatrullaje;
-     float duracionFrameAlert;
+    int   frameActual            = 0;
+    float tiempoFrame            = 0.f;
+    float duracionFramePatrullaje;
+    float duracionFrameAlert;
 
-     // ── Detección de atasco ───────────────────────────────────
-     float   posXAnterior  = 0.f;
-     float   posYAnterior  = 0.f;
-     float   tiempoStuck   = 0.f;
-     bool    tieneDesvio   = false;
-     Punto2D puntoDesvio   = {0.f, 0.f};
-     int     ladoDesvio    = 1;          // alterna +1/-1 para no girar siempre igual
+    // ── Detección de atasco ───────────────────────────────────
+    float   posXAnterior  = 0.f;
+    float   posYAnterior  = 0.f;
+    float   tiempoStuck   = 0.f;
+    bool    tieneDesvio   = false;
+    Punto2D puntoDesvio   = {0.f, 0.f};
+    int     ladoDesvio    = 1;          // alterna +1/-1 para no girar siempre igual
 
-     static constexpr float UMBRAL_STUCK = 0.35f;  // segundos sin moverse → atascado
-     static constexpr float DIST_DESVIO  = 90.f;   // distancia del punto de rodeo
-     static constexpr float RADIO_LLEGADA_DESVIO = 25.f;
+    static constexpr float UMBRAL_STUCK = 0.35f;  // segundos sin moverse → atascado
+    static constexpr float DIST_DESVIO  = 90.f;   // distancia del punto de rodeo
+    static constexpr float RADIO_LLEGADA_DESVIO = 25.f;
 
 
-     // Los métodos nuevos ya no necesitan recibir paredes como parámetro:
-     bool posicionLibre(float px, float py, float tam) const;
-     void moverHaciaConEvacion(float tx, float ty, float dt);
+    // Los métodos nuevos ya no necesitan recibir paredes como parámetro:
+    bool posicionLibre(float px, float py, float tam) const;
+    void moverHaciaConEvacion(float tx, float ty, float dt);
 
 
 

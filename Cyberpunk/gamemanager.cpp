@@ -15,6 +15,7 @@ GameManager::GameManager(QGraphicsScene* escena,
     , vista(vista)
     , estadoActual(Estado::MENU)
     , estadoAntesDePausa(Estado::NIVEL_1)
+    , dificultadActual(Dificultad::FACIL)
 {
     jugador = new Personaje(100.f, 200.f);
     nivel1  = new Nivel_1();
@@ -28,16 +29,13 @@ GameManager::GameManager(QGraphicsScene* escena,
 
 bool GameManager::operator==(const GameManager& otro) const
 {
-    // Dos managers son iguales si están en el mismo estado de juego
     return estadoActual == otro.estadoActual;
 }
-
 
 GameManager::~GameManager()
 {
     timer->stop();
     musicaMenu.stop();
-    limpiarOverlay(); // <--- ¡Añadido para evitar fugas de botones y textos!
     delete nivel1;
     delete nivel2;
     delete jugador;
@@ -48,13 +46,11 @@ GameManager::~GameManager()
 // ════════════════════════════════════════════════════════════════════════════
 void GameManager::cargarSonidos()
 {
-    // ── Música de fondo del menú (MP3, loop infinito) ─────────────────────
     musicaMenu.setAudioOutput(&audioMenu);
     musicaMenu.setSource(QUrl("qrc:/sonidoswav/Sonidos/End of Line (From TRON_ LegacyScore).mp3"));
     audioMenu.setVolume(0.5f);
     musicaMenu.setLoops(QMediaPlayer::Infinite);
 
-    // ── Clic de botón (WAV corto) ─────────────────────────────────────────
     sonidoClick.setSource(QUrl("qrc:/sonidoswav/Sonidos/clickwav.wav"));
     sonidoClick.setVolume(0.8f);
 }
@@ -62,7 +58,6 @@ void GameManager::cargarSonidos()
 void GameManager::detenerTodaMusica()
 {
     musicaMenu.stop();
-
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -80,7 +75,6 @@ void GameManager::iniciarJuego()
 // ════════════════════════════════════════════════════════════════════════════
 void GameManager::gameTick()
 {
-
     float dt = static_cast<float>(reloj.restart()) / 1000.f;
     dt = std::clamp(dt, 0.001f, 0.1f);
 
@@ -88,14 +82,16 @@ void GameManager::gameTick()
     {
     case Estado::NIVEL_1:
         nivel1->actualizar(dt);
-        if (nivel1->completado) irANivel2();
+        if (nivel1->completado)
+            mostrarNivel1Completado();                          // ← antes era irANivel2() directo
+        else if (nivel1->puertaCerrada && nivel1->tiempoRestante <= 0)
+            mostrarPuertaCerrada();
         break;
 
     case Estado::NIVEL_2:
-        // qDebug()<<"recien empieza el nivel";
         nivel2->actualizar(dt);
-        if (nivel2->completado) mostrarVictoria();
-        else if (nivel2->sinVidas)   mostrarGameOver();   // ← agregar
+        if (nivel2->completado)  mostrarVictoria();
+        else if (nivel2->sinVidas) mostrarGameOver();
         break;
 
     default: break;
@@ -111,33 +107,60 @@ void GameManager::irAMenu()
 {
     timer->stop();
     detenerTodaMusica();
-    limpiarOverlay();
-    if (jugador && jugador->getItem() &&
-        jugador->getItem()->scene() == escena)         //proteccion para evitar comportamientos raros en memoria
-        escena->removeItem(jugador->getItem());
 
+    // Vaciar la lista ANTES de clear() para evitar dangling pointers
+    itemsOverlay.clear();
+
+    if (jugador && jugador->getItem() &&
+        jugador->getItem()->scene() == escena)
+        escena->removeItem(jugador->getItem());
 
     escena->clear();
     estadoActual = Estado::MENU;
     mostrarMenu();
 
-    musicaMenu.play();   // ← música del menú arranca aquí
+    musicaMenu.play();
     timer->start(MS_POR_TICK);
+}
+
+// ── Pantalla de selección de dificultad ──────────────────────────────────
+// NO se limpia la escena: el fondo del menú (setBackgroundBrush + sceneRect)
+// ya está puesto por mostrarMenu(). Solo se reemplaza el overlay encima.
+void GameManager::irASeleccionDificultad()
+{
+    sonidoClick.play();
+
+    // Remover solo los ítems del overlay anterior de forma segura
+    for (QGraphicsItem* item : itemsOverlay)
+    {
+        if (item->scene() == escena)
+            escena->removeItem(item);
+    }
+    qDeleteAll(itemsOverlay);
+    itemsOverlay.clear();
+
+    estadoActual = Estado::SELECCION_DIFICULTAD;
+    mostrarPantallaSeleccionDificultad();
 }
 
 void GameManager::irANivel1()
 {
     sonidoClick.play();
     detenerTodaMusica();
-    limpiarOverlay();
-    if (jugador && jugador->getItem())          //proteccion para evitar comportamientos raros en memoria
+
+    // escena->clear() va a destruir todos los ítems incluyendo el overlay;
+    // vaciamos la lista primero para que limpiarOverlay no intente
+    // remover punteros que ya no existen.
+    itemsOverlay.clear();
+
+    if (jugador && jugador->getItem())
         escena->removeItem(jugador->getItem());
-
-
 
     escena->clear();
 
-    //nivel1->setScene(escena);
+    // Aplicar dificultad al nivel 1
+    nivel1->setDificultad(dificultadActual == Dificultad::DIFICIL);
+    nivel1->setScene(escena, vista);   // configura sceneRect 800×1433 y fondo
     nivel1->inicializar(jugador);
     jugador->cargarSpritesNivel1();
 
@@ -145,30 +168,25 @@ void GameManager::irANivel1()
     nivel1->aplicarEscalaView();
 
     estadoActual = Estado::NIVEL_1;
-
 }
 
 void GameManager::irANivel2()
 {
-
     detenerTodaMusica();
-    limpiarOverlay();
+
+    itemsOverlay.clear();   // escena->clear() destruirá estos ítems
 
     if (jugador && jugador->getItem() &&
-        jugador->getItem()->scene() == escena)        //proteccion para evitar comportamientos raros en memoria
+        jugador->getItem()->scene() == escena)
         escena->removeItem(jugador->getItem());
-
 
     nivel2->limpiarEscena();
     escena->clear();
     nivel2->setScene(escena);
-    jugador->setVidas(4);                       //vidas default
     nivel2->inicializar(jugador);
     vista->setAlignment(Qt::AlignCenter);
     vista->fitInView(escena->sceneRect(), Qt::KeepAspectRatio);
     estadoActual = Estado::NIVEL_2;
-
-
 }
 
 void GameManager::pausar()
@@ -178,12 +196,8 @@ void GameManager::pausar()
 
     estadoAntesDePausa = estadoActual;
     estadoActual       = Estado::PAUSADO;
-    if(estadoActual != Estado::NIVEL_2){
+    if (estadoAntesDePausa == Estado::NIVEL_2)
         nivel2->stopMusic();
-    }
-    // Bajar volumen en vez de cortar (más elegante)
-    audioMenu.setVolume(0.5f);
-
 
     mostrarPantallaPausa();
 }
@@ -191,14 +205,11 @@ void GameManager::pausar()
 void GameManager::reanudar()
 {
     if (estadoActual != Estado::PAUSADO) return;
-    nivel2->playMusic();
+    if (estadoAntesDePausa == Estado::NIVEL_2)
+        nivel2->playMusic();
     sonidoClick.play();
     limpiarOverlay();
     estadoActual = estadoAntesDePausa;
-
-    // Restaurar volumen original
-    audioMenu.setVolume(0.5f);
-
 }
 
 void GameManager::mostrarVictoria()
@@ -209,12 +220,29 @@ void GameManager::mostrarVictoria()
     mostrarPantallaVictoria();
 }
 
+void GameManager::mostrarPuertaCerrada()
+{
+    timer->stop();
+    detenerTodaMusica();
+    estadoActual = Estado::PUERTA_CERRADA;
+    mostrarPantallaPuertaCerrada();
+}
 
+// ── Nivel 1 completado: para el juego y muestra pantalla de transición ────
+void GameManager::mostrarNivel1Completado()
+{
+    timer->stop();
+    nivel1->stopMusic();
+    estadoActual = Estado::NIVEL_1_COMPLETADO;
+    mostrarPantallaNivel1Completado();
+    timer->start(MS_POR_TICK);   // el timer sigue corriendo para que la escena
+    // responda al ratón (botones BotonMenu)
+}
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Slots de botones del menú de pausa (conectados en mostrarPantallaPausa)
+//  Slots de botones
 // ════════════════════════════════════════════════════════════════════════════
-void GameManager::onContinuar() { reanudar();  }
+void GameManager::onContinuar() { reanudar(); }
 
 void GameManager::onReiniciar()
 {
@@ -233,37 +261,63 @@ void GameManager::onReiniciar()
         break;
     }
     timer->start(MS_POR_TICK);
-    //qDebug("no hubo error!");
 }
+
+void GameManager::onReintentar_N1()
+{
+    // Reinicia el nivel 1 con la dificultad ya seleccionada
+    timer->stop();
+    sonidoClick.play();
+    irANivel1();
+    timer->start(MS_POR_TICK);
+}
+
+// ── Nuevo slot: continuar al nivel 2 desde la pantalla NIVEL_1_COMPLETADO ─
+void GameManager::onIrANivel2()
+{
+    timer->stop();
+    sonidoClick.play();
+
+    // limpiarOverlay no es necesario porque irANivel2 llama escena->clear()
+    // pero vaciamos la lista para evitar dangling pointers
+    itemsOverlay.clear();
+
+    nivel1->restaurarView();   // restaura la view al estado neutro antes de N2
+    irANivel2();
+    timer->start(MS_POR_TICK);
+}
+
 void GameManager::onIrAlMenu()
 {
     timer->stop();
     detenerTodaMusica();
-     limpiarOverlay();
-    // ── Misma protección ──────────────────────────────────────────────────
-     if (jugador && jugador->getItem() &&
-         jugador->getItem()->scene() == escena)
+
+    itemsOverlay.clear();   // escena->clear() los destruye
+
+    if (jugador && jugador->getItem() &&
+        jugador->getItem()->scene() == escena)
         escena->removeItem(jugador->getItem());
 
-     // switch (estadoAntesDePausa) {
-     // case Estado::NIVEL_1:
-     //     qDebug()<<"nivel 1";
-     //     break;
-     // case Estado::NIVEL_2:
-     //     nivel2->limpiarEscena();   // ← PRIMERO nullear punteros
-     //     break;
-     // default:
-
-     //     break;
-     // }
-
-
-    escena->clear();            // ← LUEGO destruir
-
-
+    escena->clear();
     estadoActual = Estado::MENU;
     mostrarMenu();
     musicaMenu.play();
+    timer->start(MS_POR_TICK);
+}
+
+void GameManager::onSeleccionarFacil()
+{
+    sonidoClick.play();
+    dificultadActual = Dificultad::FACIL;
+    irANivel1();
+    timer->start(MS_POR_TICK);
+}
+
+void GameManager::onSeleccionarDificil()
+{
+    sonidoClick.play();
+    dificultadActual = Dificultad::DIFICIL;
+    irANivel1();
     timer->start(MS_POR_TICK);
 }
 
@@ -282,18 +336,35 @@ void GameManager::keyPressed(QKeyEvent* event)
             event->key() == Qt::Key_Space)
         {
             sonidoClick.play();
-            irANivel2();   // cambiar a irANivel1() cuando esté listo
+            irASeleccionDificultad();
         }
         return;
 
+    case Estado::SELECCION_DIFICULTAD:
+        // Los botones usan ratón; ESC vuelve al menú
+        if (event->key() == Qt::Key_Escape) irAMenu();
+        return;
+
     case Estado::PAUSADO:
-        // El menú de pausa usa ratón, pero ESC sigue funcionando
         if (event->key() == Qt::Key_Escape) reanudar();
         return;
 
     case Estado::VICTORIA:
         if (event->key() == Qt::Key_R) { onReiniciar(); }
         if (event->key() == Qt::Key_M) { onIrAlMenu();  }
+        return;
+
+    case Estado::PUERTA_CERRADA:
+        if (event->key() == Qt::Key_R) { onReintentar_N1(); }
+        if (event->key() == Qt::Key_M) { onIrAlMenu(); }
+        return;
+
+    // ── Nuevo: atajos de teclado para la pantalla de transición N1→N2 ──
+    case Estado::NIVEL_1_COMPLETADO:
+        if (event->key() == Qt::Key_Return ||
+            event->key() == Qt::Key_Enter  ||
+            event->key() == Qt::Key_Space)  { onIrANivel2(); }
+        if (event->key() == Qt::Key_M)      { onIrAlMenu();  }
         return;
 
     case Estado::NIVEL_1:
@@ -321,10 +392,12 @@ void GameManager::keyPressed(QKeyEvent* event)
         default: break;
         }
         return;
+
     case Estado::DERROTA:
         if (event->key() == Qt::Key_R) { onReiniciar(); }
         if (event->key() == Qt::Key_M) { onIrAlMenu();  }
         return;
+
     default: break;
     }
 }
@@ -359,7 +432,11 @@ void GameManager::aplicarEscala()
 void GameManager::limpiarOverlay()
 {
     for (QGraphicsItem* item : itemsOverlay)
-        escena->removeItem(item);
+    {
+        // Protección: solo remover si el ítem pertenece a esta escena
+        if (item && item->scene() == escena)
+            escena->removeItem(item);
+    }
     qDeleteAll(itemsOverlay);
     itemsOverlay.clear();
 }
@@ -393,7 +470,6 @@ QGraphicsTextItem* GameManager::agregarTextoOverlay(const QString& texto,
     return item;
 }
 
-// Crea un BotonMenu centrado horizontalmente con el offsetY dado
 BotonMenu* GameManager::agregarBotonOverlay(const QString& texto, float offsetY)
 {
     const float btnAncho = 340.f;
@@ -409,7 +485,7 @@ BotonMenu* GameManager::agregarBotonOverlay(const QString& texto, float offsetY)
     return btn;
 }
 
-// ── Pantalla de menú ──────────────────────────────────────────────────────
+// ── Menú principal ────────────────────────────────────────────────────────
 void GameManager::mostrarMenu()
 {
     escena->setBackgroundBrush(QColor(5, 10, 20));
@@ -420,41 +496,60 @@ void GameManager::mostrarMenu()
     agregarTextoOverlay("Infiltración nivel máximo",
                         QColor(100, 180, 140), 20, -85.f);
 
-    // Botón de inicio (también responde a Enter/Space por teclado)
     BotonMenu* btnIniciar = agregarBotonOverlay("►  INICIAR MISIÓN", 10.f);
     connect(btnIniciar, &BotonMenu::clicked, this, [this](){
-        sonidoClick.play();
-        irANivel2();   // cambiar a irANivel1() cuando esté listo
+        irASeleccionDificultad();
     }, Qt::QueuedConnection);
 
     agregarTextoOverlay(
-        "WASD — Mover  |  ESPACIO — Boost  |  SHIFT — Deslizar  |  ESC — Pausa",
+        "WASD — Mover  |  ESPACIO — Saltar/Boost  |  ESC — Pausa",
         QColor(90, 110, 100), 13, 110.f);
 }
 
-// ── Pantalla de pausa ─────────────────────────────────────────────────────
-// Los tres botones usan ratón. ESC también funciona para continuar.
+// ── Selección de dificultad ───────────────────────────────────────────────
+void GameManager::mostrarPantallaSeleccionDificultad()
+{
+    // Reutiliza el fondo oscuro del menú (ya está puesto por mostrarMenu)
+    agregarTextoOverlay("SELECCIONA DIFICULTAD",
+                        QColor(0, 220, 255), 36, -160.f, true);
+    agregarTextoOverlay("¿Qué tan difícil quieres que sople el viento?",
+                        QColor(120, 180, 160), 16, -100.f);
+
+    // Botón FÁCIL
+    BotonMenu* btnFacil = agregarBotonOverlay("◎  FÁCIL  — viento suave", -20.f);
+    connect(btnFacil, &BotonMenu::clicked,
+            this, &GameManager::onSeleccionarFacil, Qt::QueuedConnection);
+
+    // Botón DIFÍCIL
+    BotonMenu* btnDificil = agregarBotonOverlay("◈  DIFÍCIL — viento fuerte", 55.f);
+    connect(btnDificil, &BotonMenu::clicked,
+            this, &GameManager::onSeleccionarDificil, Qt::QueuedConnection);
+
+    agregarTextoOverlay("ESC — Volver al menú", QColor(80, 100, 90), 12, 150.f);
+}
+
+// ── Pausa ─────────────────────────────────────────────────────────────────
 void GameManager::mostrarPantallaPausa()
 {
     agregarFondoOverlay();
     agregarTextoOverlay("— PAUSA —", QColor(255, 220, 80), 36, -130.f, true);
 
-    // Botón CONTINUAR
     BotonMenu* btnContinuar = agregarBotonOverlay("►  CONTINUAR", -40.f);
-    connect(btnContinuar, &BotonMenu::clicked, this, &GameManager::onContinuar, Qt::QueuedConnection);
+    connect(btnContinuar, &BotonMenu::clicked,
+            this, &GameManager::onContinuar, Qt::QueuedConnection);
 
-    // Botón REINICIAR
     BotonMenu* btnReiniciar = agregarBotonOverlay("↺  REINICIAR NIVEL", 30.f);
-    connect(btnReiniciar, &BotonMenu::clicked, this, &GameManager::onReiniciar ,Qt::QueuedConnection);
+    connect(btnReiniciar, &BotonMenu::clicked,
+            this, &GameManager::onReiniciar, Qt::QueuedConnection);
 
-    // Botón MENÚ PRINCIPAL
     BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 100.f);
-    connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
+    connect(btnMenu, &BotonMenu::clicked,
+            this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
 
     agregarTextoOverlay("ESC — Continuar", QColor(80, 100, 90), 13, 175.f);
 }
 
-// ── Pantalla de victoria ──────────────────────────────────────────────────
+// ── Victoria ──────────────────────────────────────────────────────────────
 void GameManager::mostrarPantallaVictoria()
 {
     agregarFondoOverlay();
@@ -464,12 +559,15 @@ void GameManager::mostrarPantallaVictoria()
                         QColor(100, 220, 160), 20, -70.f);
 
     BotonMenu* btnReiniciar = agregarBotonOverlay("↺  REINTENTAR", 10.f);
-    connect(btnReiniciar, &BotonMenu::clicked, this, &GameManager::onReiniciar, Qt::QueuedConnection);
+    connect(btnReiniciar, &BotonMenu::clicked,
+            this, &GameManager::onReiniciar, Qt::QueuedConnection);
 
     BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 80.f);
-    connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
+    connect(btnMenu, &BotonMenu::clicked,
+            this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
 }
 
+// ── Game Over (nivel 2) ───────────────────────────────────────────────────
 void GameManager::mostrarGameOver()
 {
     timer->stop();
@@ -477,7 +575,6 @@ void GameManager::mostrarGameOver()
     estadoActual = Estado::DERROTA;
 
     agregarFondoOverlay();
-
     agregarTextoOverlay("GAME  OVER",
                         QColor(220, 40, 40), 52, -130.f, true);
     agregarTextoOverlay("El equipo de seguridad te atrapó",
@@ -491,3 +588,111 @@ void GameManager::mostrarGameOver()
     connect(btnMenu, &BotonMenu::clicked,
             this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
 }
+
+// ── Puerta Cerrada (tiempo agotado en nivel 1) ────────────────────────────
+// Usa helpers _Cam porque se muestra sobre la escena scrolleable del N1.
+void GameManager::mostrarPantallaPuertaCerrada()
+{
+    agregarFondoOverlay_Cam();
+    agregarTextoOverlay_Cam("PUERTA  CERRADA",
+                            QColor(255, 60, 60), 48, -140.f, true);
+    agregarTextoOverlay_Cam("Se acabó el tiempo — el acceso fue bloqueado",
+                            QColor(220, 130, 130), 17, -75.f);
+
+    BotonMenu* btnReintentar = agregarBotonOverlay_Cam("↺  REINTENTAR", 10.f);
+    connect(btnReintentar, &BotonMenu::clicked,
+            this, &GameManager::onReintentar_N1, Qt::QueuedConnection);
+
+    BotonMenu* btnMenu = agregarBotonOverlay_Cam("⌂  MENÚ PRINCIPAL", 80.f);
+    connect(btnMenu, &BotonMenu::clicked,
+            this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
+
+    agregarTextoOverlay_Cam("R — Reintentar  |  M — Menú",
+                            QColor(80, 100, 90), 12, 158.f);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  UI helpers — coordenadas relativas al viewport visible de la cámara
+//  Necesarios cuando la escena tiene scroll (nivel 1: 800×1433).
+//  Calculan posiciones a partir del rect que la view realmente muestra.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Devuelve el rectángulo del viewport en coordenadas de escena.
+QRectF GameManager::viewportEnEscena() const
+{
+    QPointF tl = vista->mapToScene(0, 0);
+    QPointF br = vista->mapToScene(vista->viewport()->width(),
+                                   vista->viewport()->height());
+    return QRectF(tl, br);
+}
+
+void GameManager::agregarFondoOverlay_Cam()
+{
+    QRectF vp = viewportEnEscena();
+    QGraphicsRectItem* fondo = new QGraphicsRectItem(vp);
+    fondo->setBrush(QBrush(QColor(0, 0, 0, 200)));
+    fondo->setPen(Qt::NoPen);
+    fondo->setZValue(10.0);
+    escena->addItem(fondo);
+    itemsOverlay.append(fondo);
+}
+
+QGraphicsTextItem* GameManager::agregarTextoOverlay_Cam(const QString& texto,
+                                                        QColor color, int tamano,
+                                                        float offsetY, bool negrita)
+{
+    QRectF vp = viewportEnEscena();
+
+    QGraphicsTextItem* item = new QGraphicsTextItem(texto);
+    item->setDefaultTextColor(color);
+    item->setFont(QFont("Consolas", tamano,
+                        negrita ? QFont::Bold : QFont::Normal));
+    item->setZValue(11.0);
+
+    QRectF r = item->boundingRect();
+    item->setPos(vp.left() + vp.width()  * 0.5f - r.width()  * 0.5f,
+                 vp.top()  + vp.height() * 0.5f - r.height() * 0.5f + offsetY);
+
+    escena->addItem(item);
+    itemsOverlay.append(item);
+    return item;
+}
+
+BotonMenu* GameManager::agregarBotonOverlay_Cam(const QString& texto, float offsetY)
+{
+    QRectF vp = viewportEnEscena();
+    const float btnAncho = 340.f;
+    const float btnAlto  =  52.f;
+
+    BotonMenu* btn = new BotonMenu(texto, btnAncho, btnAlto);
+    btn->setZValue(11.0);
+    btn->setPos(vp.left() + vp.width()  * 0.5f - btnAncho * 0.5f,
+                vp.top()  + vp.height() * 0.5f - btnAlto  * 0.5f + offsetY);
+
+    escena->addItem(btn);
+    itemsOverlay.append(btn);
+    return btn;
+}
+
+// ── Nivel 1 Completado — usa helpers _Cam para cuadrar con el viewport ────
+void GameManager::mostrarPantallaNivel1Completado()
+{
+    agregarFondoOverlay_Cam();
+
+    agregarTextoOverlay_Cam("ACCESO  CONCEDIDO",
+                            QColor(0, 255, 120), 52, -150.f, true);
+    agregarTextoOverlay_Cam("Nivel 1 superado — la puerta está abierta",
+                            QColor(100, 180, 140), 20, -85.f);
+
+    BotonMenu* btnContinuar = agregarBotonOverlay_Cam("►  CONTINUAR MISIÓN", 10.f);
+    connect(btnContinuar, &BotonMenu::clicked,
+            this, &GameManager::onIrANivel2, Qt::QueuedConnection);
+
+    BotonMenu* btnReintentar = agregarBotonOverlay_Cam("↺  REINTENTAR NIVEL 1", 80.f);
+    connect(btnReintentar, &BotonMenu::clicked,
+            this, &GameManager::onReintentar_N1, Qt::QueuedConnection);
+
+    agregarTextoOverlay_Cam("ESPACIO — Continuar misión  |  M — Menú principal",
+                            QColor(90, 110, 100), 13, 175.f);
+}
+
