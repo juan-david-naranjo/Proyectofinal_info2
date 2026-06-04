@@ -13,6 +13,25 @@ Nivel::~Nivel()
     limpiarPlataformas();
 }
 
+Nivel::Nivel(const Nivel& otro)
+    : tiempoRestante(otro.tiempoRestante)
+    , completado(otro.completado)
+    , tiempoAcumulado(otro.tiempoAcumulado)
+    , jugador(otro.jugador)    // puntero compartido (el jugador no se duplica)
+{
+    // Copia profunda de plataformas: cada Nivel tiene sus propios obstáculos
+    for (Plataforma* plat : otro.plataformas)
+        plataformas.push_back(new Plataforma(*plat));
+}
+
+bool Nivel::operator==(const Nivel& otro) const
+{
+    // Iguales si tienen el mismo tiempo restante y mismo estado de completitud
+    return tiempoRestante == otro.tiempoRestante
+           && completado == otro.completado;
+}
+
+
 // Resuelve colisiones del personaje contra todas las plataformas del nivel.
 // Se llama DESPUÉS de mover al personaje (en actualizar).
 // Usa Hitbox explícitas: no depende de Qt para la detección de colisiones.

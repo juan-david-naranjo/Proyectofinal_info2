@@ -66,6 +66,8 @@ protected:
 public:
     EntidadJuego();
     EntidadJuego(float X, float Y);
+    EntidadJuego(const EntidadJuego& otro);
+    bool operator==(const EntidadJuego& otro) const;
 
 
 

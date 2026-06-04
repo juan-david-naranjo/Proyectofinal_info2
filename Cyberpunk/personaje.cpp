@@ -83,6 +83,48 @@ Personaje::Personaje(float X, float Y) : Personaje()
     itemGrafico->setPos(x, y);
 }
 
+//----------- Sobrecargas Obligatorias ------------------------
+
+Personaje::Personaje(const Personaje& otro)
+    : EntidadJuego(otro)          // copia posición, velocidades, activa
+    , ANCHO(otro.ANCHO)
+    , ALTO(otro.ALTO)
+    , hitboxOffsetX(otro.hitboxOffsetX)
+    , hitboxOffsetY(otro.hitboxOffsetY)
+    , hitboxAnchoReal(otro.hitboxAnchoReal)
+    , hitboxAltoReal(otro.hitboxAltoReal)
+    , estadoAnim(otro.estadoAnim)
+    , frameActual(otro.frameActual)
+    , tiempoFrame(otro.tiempoFrame)
+    , duracionFrame(otro.duracionFrame)
+    , miraDerecha(otro.miraDerecha)
+    , vidas(otro.vidas)
+    , energia(otro.energia)
+    , velMax(otro.velMax)
+    , enSuelo(otro.enSuelo)
+    , puedeDoubleSalto(otro.puedeDoubleSalto)
+    , fuerzaSalto(otro.fuerzaSalto)
+    , saltosRestantes(otro.saltosRestantes)
+    , tiempoViento(otro.tiempoViento)
+    , deslizando(otro.deslizando)
+    , tiempoDesliz(otro.tiempoDesliz)
+    , boostActivo(otro.boostActivo)
+    , tiempoBoost(otro.tiempoBoost)
+    , factorSigilo(otro.factorSigilo)
+    , Sprite(nullptr)    // no copiar puntero crudo de hoja de sprites
+// Los vectores de frames se recargan con cargarSpritesNivelX()
+{
+    std::copy(std::begin(otro.keys), std::end(otro.keys), std::begin(keys));
+}
+
+
+//---------------------------------------------------------------
+bool Personaje::operator==(const Personaje& otro) const
+{
+    // Iguales si están en la misma posición y tienen las mismas vidas
+    return x == otro.x && y == otro.y && vidas == otro.vidas;
+}
+
 Personaje::~Personaje()
 {
     delete Sprite;
@@ -737,6 +779,11 @@ void Personaje::setHitboxOffset(float offsetX,float offsetY, float anchoEfectivo
     // y = offsetY;
 
 
+}
+
+void Personaje::setVidas(int cantidad)
+{
+    vidas=cantidad;
 }
 
 // ============================================================

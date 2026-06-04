@@ -14,7 +14,7 @@ GameManager::GameManager(QGraphicsScene* escena,
     , escena(escena)
     , vista(vista)
     , estadoActual(Estado::MENU)
-    , estadoAntesDePausa(Estado::NIVEL_2)
+    , estadoAntesDePausa(Estado::NIVEL_1)
 {
     jugador = new Personaje(100.f, 200.f);
     nivel1  = new Nivel_1();
@@ -26,8 +26,17 @@ GameManager::GameManager(QGraphicsScene* escena,
     cargarSonidos();
 }
 
+bool GameManager::operator==(const GameManager& otro) const
+{
+    // Dos managers son iguales si están en el mismo estado de juego
+    return estadoActual == otro.estadoActual;
+}
+
+
 GameManager::~GameManager()
 {
+    timer->stop();
+    musicaMenu.stop();
     delete nivel1;
     delete nivel2;
     delete jugador;
@@ -70,6 +79,7 @@ void GameManager::iniciarJuego()
 // ════════════════════════════════════════════════════════════════════════════
 void GameManager::gameTick()
 {
+
     float dt = static_cast<float>(reloj.restart()) / 1000.f;
     dt = std::clamp(dt, 0.001f, 0.1f);
 
@@ -81,6 +91,7 @@ void GameManager::gameTick()
         break;
 
     case Estado::NIVEL_2:
+        // qDebug()<<"recien empieza el nivel";
         nivel2->actualizar(dt);
         if (nivel2->completado) mostrarVictoria();
         else if (nivel2->sinVidas)   mostrarGameOver();   // ← agregar
@@ -100,13 +111,10 @@ void GameManager::irAMenu()
     timer->stop();
     detenerTodaMusica();
     limpiarOverlay();
-    if (jugador && jugador->getItem())          //proteccion para evitar comportamientos raros en memoria
+    if (jugador && jugador->getItem() &&
+        jugador->getItem()->scene() == escena)         //proteccion para evitar comportamientos raros en memoria
         escena->removeItem(jugador->getItem());
-    if(estadoActual==Estado::NIVEL_1){
-        //nivel1->limpiarItemsPlataformas();
-    }else{
-        nivel2->limpiarEscena();
-    }
+
 
     escena->clear();
     estadoActual = Estado::MENU;
@@ -142,11 +150,11 @@ void GameManager::irANivel1()
 void GameManager::irANivel2()
 {
 
-
     detenerTodaMusica();
     limpiarOverlay();
 
-    if (jugador && jugador->getItem())          //proteccion para evitar comportamientos raros en memoria
+    if (jugador && jugador->getItem() &&
+        jugador->getItem()->scene() == escena)        //proteccion para evitar comportamientos raros en memoria
         escena->removeItem(jugador->getItem());
 
 
@@ -154,9 +162,6 @@ void GameManager::irANivel2()
     escena->clear();
     nivel2->setScene(escena);
     nivel2->inicializar(jugador);
-
-
-    jugador->cargarSpritesNivel2();
     vista->setAlignment(Qt::AlignCenter);
     vista->fitInView(escena->sceneRect(), Qt::KeepAspectRatio);
     estadoActual = Estado::NIVEL_2;
@@ -171,9 +176,11 @@ void GameManager::pausar()
 
     estadoAntesDePausa = estadoActual;
     estadoActual       = Estado::PAUSADO;
-
+    if(estadoActual != Estado::NIVEL_2){
+        nivel2->stopMusic();
+    }
     // Bajar volumen en vez de cortar (más elegante)
-    audioMenu.setVolume(0.15f);
+    audioMenu.setVolume(0.5f);
 
 
     mostrarPantallaPausa();
@@ -182,7 +189,7 @@ void GameManager::pausar()
 void GameManager::reanudar()
 {
     if (estadoActual != Estado::PAUSADO) return;
-
+    nivel2->playMusic();
     sonidoClick.play();
     limpiarOverlay();
     estadoActual = estadoAntesDePausa;
@@ -209,10 +216,20 @@ void GameManager::onContinuar() { reanudar();  }
 
 void GameManager::onReiniciar()
 {
+    timer->stop();
     sonidoClick.play();
-    nivel2->completado = false;
-    nivel2->sinVidas   = false;
-    irANivel2();
+    switch (estadoAntesDePausa) {
+    case Estado::NIVEL_1:
+        irANivel1();
+        break;
+    case Estado::NIVEL_2:
+        nivel2->completado = false;
+        nivel2->sinVidas   = false;
+        irANivel2();
+        break;
+    default:
+        break;
+    }
     timer->start(MS_POR_TICK);
     //qDebug("no hubo error!");
 }
@@ -222,12 +239,23 @@ void GameManager::onIrAlMenu()
     detenerTodaMusica();
      limpiarOverlay();
     // ── Misma protección ──────────────────────────────────────────────────
-    if (jugador && jugador->getItem())
+     if (jugador && jugador->getItem() &&
+         jugador->getItem()->scene() == escena)
         escena->removeItem(jugador->getItem());
 
+     // switch (estadoAntesDePausa) {
+     // case Estado::NIVEL_1:
+     //     qDebug()<<"nivel 1";
+     //     break;
+     // case Estado::NIVEL_2:
+     //     nivel2->limpiarEscena();   // ← PRIMERO nullear punteros
+     //     break;
+     // default:
+
+     //     break;
+     // }
 
 
-    nivel2->limpiarEscena();   // ← PRIMERO nullear punteros
     escena->clear();            // ← LUEGO destruir
 
 
@@ -434,10 +462,10 @@ void GameManager::mostrarPantallaVictoria()
                         QColor(100, 220, 160), 20, -70.f);
 
     BotonMenu* btnReiniciar = agregarBotonOverlay("↺  REINTENTAR", 10.f);
-    connect(btnReiniciar, &BotonMenu::clicked, this, &GameManager::onReiniciar);
+    connect(btnReiniciar, &BotonMenu::clicked, this, &GameManager::onReiniciar, Qt::QueuedConnection);
 
     BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 80.f);
-    connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu);
+    connect(btnMenu, &BotonMenu::clicked, this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
 }
 
 void GameManager::mostrarGameOver()

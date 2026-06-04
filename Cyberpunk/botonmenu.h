@@ -43,6 +43,7 @@ public:
     void   paint(QPainter* painter,
                  const QStyleOptionGraphicsItem*,
                  QWidget*) override;
+    bool operator==(const BotonMenu& otro) const;   // -> Sobrecarga Obligatoria
 
 signals:
     void clicked();   // emitida al soltar el botón con el ratón encima
@@ -62,6 +63,7 @@ private:
     float   alto;
     bool    hovered;    // ratón encima
     bool    presionado; // botón siendo pulsado
+    BotonMenu(const BotonMenu&) = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
 };
 
 #endif // BOTONMENU_H

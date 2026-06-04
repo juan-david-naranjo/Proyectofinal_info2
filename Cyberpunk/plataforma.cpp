@@ -30,6 +30,28 @@ Plataforma::Plataforma(float px, float py, float w, float h, bool movil,TipoMuro
     itemGrafico = nullptr;
 }
 
+//----------------- Sobrecarga Obligatoria ----------------------
+Plataforma::Plataforma(const Plataforma& otro)
+    : EntidadJuego(otro)
+    , ancho(otro.ancho)
+    , alto(otro.alto)
+    , esMovil(otro.esMovil)
+    , tipoMuro(otro.tipoMuro)
+    , amplitudMovimiento(otro.amplitudMovimiento)
+    , velocidadMovimiento(otro.velocidadMovimiento)
+    , origenX(otro.origenX)
+    , laberintos(otro.laberintos)    // QPixmap usa copy-on-write, es seguro
+// itemGrafico = nullptr (herencia)
+{}
+
+bool Plataforma::operator==(const Plataforma& otro) const
+{
+    // Iguales si tienen la misma posición y dimensiones
+    return x == otro.x && y == otro.y
+           && ancho == otro.ancho && alto == otro.alto;
+}
+
+//--------------------------------------------------------------
 // getHitbox() está definido inline en plataforma.h — devuelve Hitbox(x, y, ancho, alto).
 // No se necesita getBoundingBox() con QRectF: el sistema de físicas usa Hitbox directamente.
 

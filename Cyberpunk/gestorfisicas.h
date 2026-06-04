@@ -31,6 +31,9 @@ class GestorFisicas
 {
 public:
     GestorFisicas() = default;
+    GestorFisicas(const GestorFisicas& otro) = default;              //  GestorFisicas no tiene estado de instancia (todos sus métodos son
+                                                                     //  estáticos). Cualquier copia produce un objeto idéntico.
+    bool operator==(const GestorFisicas& otro) const;
 
     // ── Constantes físicas ──────────────────────────────────
     static constexpr float GRAVEDAD          = 800.f;   // px/s²  (eje Y crece ↓)

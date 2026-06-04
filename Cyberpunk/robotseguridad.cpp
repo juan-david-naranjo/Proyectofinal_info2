@@ -41,6 +41,41 @@ RobotSeguridad::RobotSeguridad(float px, float py,
         waypoints.push_back(Punto2D(px, py));
 }
 
+//-------------- Sobrecargas-----------------
+RobotSeguridad::RobotSeguridad(const RobotSeguridad& otro)
+    : Enemigo(otro)
+    , estado(otro.estado)
+    , radioDeteccion(otro.radioDeteccion)
+    , radioDesenganche(otro.radioDesenganche)
+    , velPatrulla(otro.velPatrulla)
+    , velPersecucion(otro.velPersecucion)
+    , waypoints(otro.waypoints)          // copia profunda del vector
+    , historial(otro.historial)          // copia profunda del historial
+    , indiceWaypoint(otro.indiceWaypoint)
+    , tiempoPersecucion(otro.tiempoPersecucion)
+    , distanciaJugador(otro.distanciaJugador)
+    , frameActual(otro.frameActual)
+    , tiempoFrame(otro.tiempoFrame)
+    , duracionFramePatrullaje(otro.duracionFramePatrullaje)
+    , duracionFrameAlert(otro.duracionFrameAlert)
+    , framesPatrullaje(otro.framesPatrullaje)   // QPixmap comparte datos (implícitamente)
+    , framesAlert(otro.framesAlert)
+    , posXAnterior(otro.posXAnterior)
+    , posYAnterior(otro.posYAnterior)
+    , tiempoStuck(otro.tiempoStuck)
+    , tieneDesvio(otro.tieneDesvio)
+    , puntoDesvio(otro.puntoDesvio)
+    , ladoDesvio(otro.ladoDesvio)
+    , velObjetivo(otro.velObjetivo)
+    , paredesCache(otro.paredesCache)
+// itemGrafico = nullptr por herencia de EntidadJuego(otro)
+{}
+
+bool RobotSeguridad::operator==(const RobotSeguridad& otro) const
+{
+    // Iguales si están en la misma posición y en el mismo estado de IA
+    return x == otro.x && y == otro.y && estado == otro.estado;
+}
 // ════════════════════════════════════════════════════════════════════════════
 //  cargarSprites
 //  Recibe la QPixmap ya cargada (misma hoja que el personaje u otra).

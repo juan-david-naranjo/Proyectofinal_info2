@@ -33,6 +33,9 @@ public:
     Personaje();
     explicit Personaje(float x, float y);
     ~Personaje() override;
+    //----------- Sobrecargas Obligatorias
+    Personaje(const Personaje& otro);
+    bool operator==(const Personaje& otro) const;
 
     // ── Entrada ──────────────────────────────────────────────
     void keyPressed (int key);
@@ -74,7 +77,7 @@ public:
     }
 
     void setHitboxOffset(float offsetX,float offsetY,float anchoEfectivo, float altoEfectivo);
-
+    void setVidas(int cantidad);//setter para nivel_2
     // ── Daño / reset ──────────────────────────────────────────
     void recibirDanio(int cantidad = 1);
     void resetearPosicion(float rx, float ry);

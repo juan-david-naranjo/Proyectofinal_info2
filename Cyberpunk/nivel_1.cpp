@@ -28,6 +28,32 @@ Nivel_1::Nivel_1()
     Escenario = new QPixmap(":/Kael_nivel1/Sprites/Nivel1/Escenario1P.png");
 }
 
+// ---------------- Sobrecarga Obligatoria -------------------
+Nivel_1::Nivel_1(const Nivel_1& otro)
+    : Nivel(otro)                       // copia plataformas, tiempoRestante, etc.
+    , spawnX(otro.spawnX)
+    , spawnY(otro.spawnY)
+    , timerAcumulado(otro.timerAcumulado)
+    , puertaCerrada(otro.puertaCerrada)
+    , Escenario(otro.Escenario)          // QPixmap: copy-on-write, es seguro
+    // Ítems Qt (escena, vista, HUD) quedan a nullptr — la copia es lógica
+    , escena(nullptr)
+    , vista(nullptr)
+    , fondoHUD(nullptr)
+    , fondoBarraTiempo(nullptr)
+    , barraTiempo(nullptr)
+    , hudTiempo(nullptr)
+    , hudVidas(nullptr)
+    , hudPuerta(nullptr)
+{}
+
+bool Nivel_1::operator==(const Nivel_1& otro) const
+{
+    // Iguales si el estado de juego lógico coincide
+    return Nivel::operator==(otro) && puertaCerrada == otro.puertaCerrada;
+}
+
+
 Nivel_1::~Nivel_1()
 {
     delete Escenario;

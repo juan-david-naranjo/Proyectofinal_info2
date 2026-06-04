@@ -28,6 +28,9 @@
 //  Dinámica:
 //    • El jugador debe llegar a la computadora (objetivo) sin ser atrapado
 //    • Si el robot toca al jugador → pierde una vida y respawnea
+//  Emocion:
+//    • la Inteligencia artificial entra en modo ataque cuando te percibe (Gira)
+//    • el personaje sufre daño cuando la IA lo atrapa
 // ============================================================
 
 struct ZonaOculta {
@@ -51,30 +54,17 @@ public:
     bool sinVidas = false;
     QPixmap *Escenario;
     Nivel_2();
+    //Sobrecarga Obligatoria
+    Nivel_2(const Nivel_2& otro);
+    bool operator==(const Nivel_2& otro) const;
+
+
     ~Nivel_2() override;
-
     std::vector<RobotSeguridad*> robots;
-
     void inicializar(Personaje* p) override;
     void actualizar(float dt) override;
 
-    // Getters de estado (para HUD externo)
-    int   getTiempoRestante() const;
-    bool  isCompletado()      const;
-
-
-
-    //para el escenario
-    void limpiarEscena();
-    void setScene(QGraphicsScene* scene);
-    void    cargarSpriteObjetivo(const QPixmap& hoja,
-                                   int srcX, int srcY,
-                              int srcW, int srcH);
-
-
-
     //zonas
-    //para las zonas
     std::vector<QGraphicsPixmapItem*> itemsZonaSprites;
     std::vector<DatoEstadoZona>       estadosZonas;
     std::vector<QPixmap> framesZonaApertura;   // animación al entrar
@@ -86,18 +76,45 @@ public:
     static constexpr float TIEMPO_PARA_OCULTARSE = 2.f;   // segundos (ajustable)
     float                  duracionFrameZona      = 0.1f;
 
+    // Getters de estado (para HUD externo)
+    int   getTiempoRestante() const;
+    bool  isCompletado()      const;
+    //para el escenario
+    void limpiarEscena();
+    void setScene(QGraphicsScene* scene);
+    void    cargarSpriteObjetivo(const QPixmap& hoja,
+                              int srcX, int srcY,
+                              int srcW, int srcH);
     void actualizarZonasOcultas(float dt);
     void cargarSpritesZonas(const QPixmap &hoja, int oxAnim, int oyAnim, int fwA, int fhA, int numAnim, int sepAnim, int oxE, int oyE, int fwE, int fhE,const std::vector<QColor>& fondos, int tolerancia = 10);
-private:
+    void stopMusic();
+    void playMusic();
+    void addWallScene();
+    void addRobotScene();
+    void addObjetivoScene();
+    void addHideZone();
+    void loadDestAnim();
+    void addHudScene();
 
-    // ── Sonidos por evento ────────────────────────────────────────────────────
+
+
+
+private:
+    //Escena Qt
+    QGraphicsScene*              escena;          //Referencia a la escena actual
+    // Sonidos por evento
     QSoundEffect sonidoDeteccion;   // robot entra en modo persecución
     QSoundEffect sonidoHackeoLoop;  // loop mientras hackeas la computadora
     QSoundEffect sonidoVictoria;    // hackeo completado
     QSoundEffect sonidoDanio;
+    // ── Sonidos fondo ────────────────────────────────────────────────────
+    QMediaPlayer musicaFondo;
+    QAudioOutput audioFondo;
+
+
 
     // ── Sistema de daño con invulnerabilidad ──────────────────────────────────
-    int   vidasN2;                    // vidas del nivel (independiente de Personaje)
+    int   vidasN2=4;                    // vidas del nivel (independiente de Personaje)
     int   vidasN2Max      = 4;        // máximo de vidas
     float tiempoInvulnerable = 0.f;   // contador de iframes tras recibir daño
     static constexpr float DURACION_INVULNERABLE = 1.5f;  // segundos sin poder ser dañado
@@ -106,13 +123,10 @@ private:
 
     // ── HUD ───────────────────────────────────────────────────────────────────
     QGraphicsTextItem*              itemHUDTimer = nullptr;
-
     std::vector<QGraphicsEllipseItem*> itemsCorazones;
 
 
     void actualizarHUD();
-
-
 
     // seccion zona oculta:
     std::vector<ZonaOculta>  zonasOcultas;
@@ -120,13 +134,6 @@ private:
 
 
     bool jugadorEnSombra() const;
-
-
-
-    // ── Sonidos fondo ────────────────────────────────────────────────────
-    QMediaPlayer musicaFondo;
-    QAudioOutput audioFondo;
-
     // ── Lógica del hackeo ─────────────────────────────────────────────────────
     float tiempoHackeo     = 0.f;
     float tiempoHackeoMax  = 3.f;   // segundos para completar (ajustable)
@@ -134,11 +141,6 @@ private:
 
     // ── Control de cambios de estado para el sonido de detección ─────────────
     std::vector<EstadoAgente> estadosAnteriores;
-
-
-
-
-
     // Posición del objetivo (computadora a apagar)
     float objetivoX;
     float objetivoY;
@@ -168,8 +170,7 @@ private:
 
 
 
-    // ── Escena Qt ─────────────────────────────────────────────
-    QGraphicsScene*              escena;          ///< Referencia a la escena actual
+
 
 
     std::vector<QGraphicsRectItem*> debugRobotsRect;        //hitbox robot

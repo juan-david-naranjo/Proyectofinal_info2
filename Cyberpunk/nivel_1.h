@@ -26,7 +26,10 @@ public:
     bool     puertaCerrada;
 
     Nivel_1();
+    Nivel_1(const Nivel_1& otro);
+    bool operator==(const Nivel_1& otro) const;
     ~Nivel_1() override;
+
 
     void inicializar(Personaje* p) override;
     void actualizar(float dt)      override;

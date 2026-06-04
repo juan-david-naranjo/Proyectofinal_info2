@@ -40,6 +40,7 @@ public:
         VICTORIA,
         DERROTA
     };
+    bool operator==(const GameManager& otro) const; // -> Sobrecarga Obligatoria
 
     explicit GameManager(QGraphicsScene* escena,
                          QGraphicsView*  vista,
@@ -59,7 +60,9 @@ private slots:
     void onReiniciar();   // botón "REINICIAR"
     void onIrAlMenu();    // botón "MENÚ PRINCIPAL"
 
+
 private:
+    GameManager(const GameManager&) = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
     QGraphicsScene* escena;
     QGraphicsView*  vista;
     QTimer*         timer;

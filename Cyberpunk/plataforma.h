@@ -40,6 +40,8 @@ public:
 
     Plataforma();
     Plataforma(float x, float y, float w, float h, bool movil = false,TipoMuro tipo  = TipoMuro::SIN_SPRITE);
+    Plataforma(const Plataforma& otro);
+    bool operator==(const Plataforma& otro) const;
 
     // Hitbox explícita para el sistema de colisiones (sin Qt).
     // Siempre refleja la posición actual (x,y) y el tamaño de la plataforma.

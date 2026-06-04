@@ -48,6 +48,9 @@ public:
                    float valPersecucion,
                    const std::vector<Punto2D> &waypoints);
 
+    RobotSeguridad(const RobotSeguridad& otro);
+    bool operator==(const RobotSeguridad& otro) const;
+
     // ── Estado del agente ────────────────────────────────────
     EstadoAgente estado;
 
