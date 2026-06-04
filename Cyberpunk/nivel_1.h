@@ -10,6 +10,12 @@
 #include <QGraphicsRectItem>
 #include <QGraphicsPixmapItem>
 
+// Sonidos
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QSoundEffect>
+#include <QUrl>
+
 // ============================================================
 //  Nivel_1 — Vista lateral, Jump-King style
 //
@@ -37,27 +43,31 @@ public:
     void setScene(QGraphicsScene* scene, QGraphicsView* view);
 
     // Recalcula la escala cuando la ventana cambia de tamaño
-    // (llamar desde MainWindow::resizeEvent solo si nivelActual==1)
     void aplicarEscalaView();
 
     // Restaura la view al estado neutro antes de pasar al nivel 2
     void restaurarView();
 
+    // ── Dificultad ────────────────────────────────────────────
+    void setDificultad(bool dificil);
+
+    // ── Sonidos ───────────────────────────────────────────────
+    void stopMusic();
+    void playMusic();
+
 private:
     // ── Dimensiones lógicas ───────────────────────────────────
     static constexpr float ESCENA_W     = 800.f;
-    static constexpr float ESCENA_H     = 1433.f;  // 2752*(800/1536)
+    static constexpr float ESCENA_H     = 1433.f;
 
     // ── Constantes del juego ──────────────────────────────────
     static constexpr int   TIEMPO_NIVEL = 90;
     static constexpr float LIMITE_CAIDA = ESCENA_H + 50.f;
-    // META — plataforma dorada: y=110, h=18 → superficie en y=128
-    // El jugador (alto=70) apoyado sobre ella queda en y=128-70=58
-    // Usamos un margen generoso: cualquier Y ≤ 130 estando en suelo
-    static constexpr float META_Y = 310.f;
-
-    // El jugador aparece a este offset por debajo del centro
+    static constexpr float META_Y       = 310.f;
     static constexpr float CAM_OFFSET_Y = 150.f;
+
+    // Amplitud del viento en modo difícil
+    static constexpr float VIENTO_AMPLITUD_DIFICIL = 240.f;
 
     // ── Spawn ─────────────────────────────────────────────────
     float spawnX;
@@ -66,26 +76,35 @@ private:
     // ── Tiempo ────────────────────────────────────────────────
     float timerAcumulado;
 
+    // ── Dificultad ────────────────────────────────────────────
+    bool  modoDificil;
+    float vientoAmplitud;
+
     // ── Referencias Qt ────────────────────────────────────────
     QGraphicsScene* escena;
     QGraphicsView*  vista;
 
     // ── Items gráficos de plataformas ─────────────────────────
-    QPixmap spritePlataforma;                           // sprite cargado una vez
-    std::vector<QGraphicsPixmapItem*> itemsPlataformas; // reemplaza QGraphicsRectItem
+    QPixmap spritePlataforma;
+    std::vector<QGraphicsPixmapItem*> itemsPlataformas;
 
     // ── HUD ───────────────────────────────────────────────────
-    QGraphicsRectItem* fondoHUD;
-    QGraphicsRectItem* fondoBarraTiempo;
-    QGraphicsRectItem* barraTiempo;
-    QGraphicsTextItem* hudTiempo;
-    QGraphicsTextItem* hudVidas;
-    QGraphicsTextItem* hudPuerta;
+    // Timer estilo N2: fondo + texto centrado, sin barra ni vidas
+    QGraphicsRectItem* fondoHUD;        // banda semitransparente en la cima
+    QGraphicsTextItem* hudTiempo;       // "1:30" centrado
+    QGraphicsTextItem* hudDificultad;   // "FÁCIL" / "DIFÍCIL" a la derecha
+    QGraphicsTextItem* hudPuerta;       // aviso "¡PUERTA CERRADA!"
 
     // ── Debug ─────────────────────────────────────────────────
-    // Cambiar a false para desactivar la hitbox visual
     static constexpr bool DEBUG_HITBOX = true;
     QGraphicsRectItem* debugHitboxItem;
+
+    // ── Sonidos ───────────────────────────────────────────────
+    QMediaPlayer musicaFondo;
+    QAudioOutput audioFondo;
+    QSoundEffect sonidoSalto;
+
+    bool saltandoAnterior;
 
     // ── Helpers ───────────────────────────────────────────────
     void generarPlataformas();

@@ -12,6 +12,12 @@ void GestorFisicas::aplicarGravedad(float &vy, float &y, float dt)
     y += vy * dt;
 }
 
+bool GestorFisicas::operator==(const GestorFisicas& /*otro*/) const
+{
+    // Sin estado de instancia → siempre iguales
+    return true;
+}
+
 // ── Nivel 1: Viento oscilatorio ──────────────────────────────────────────────
 // Devuelve la fuerza horizontal del viento usando movimiento oscilatorio:
 //   F(t) = A · sin(2π · f · t)

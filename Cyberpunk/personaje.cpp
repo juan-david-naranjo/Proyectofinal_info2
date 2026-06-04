@@ -52,6 +52,52 @@ Personaje::Personaje(float X, float Y) : Personaje()
     itemGrafico->setPos(x, y);
 }
 
+// ============================================================
+//  Constructor de copia
+// ============================================================
+Personaje::Personaje(const Personaje& otro)
+    : EntidadJuego(otro)
+    , ANCHO(otro.ANCHO)
+    , ALTO(otro.ALTO)
+    , hitboxOffsetX(otro.hitboxOffsetX)
+    , hitboxOffsetY(otro.hitboxOffsetY)
+    , hitboxAnchoReal(otro.hitboxAnchoReal)
+    , hitboxAltoReal(otro.hitboxAltoReal)
+    , estadoAnim(otro.estadoAnim)
+    , frameActual(otro.frameActual)
+    , tiempoFrame(otro.tiempoFrame)
+    , duracionFrame(otro.duracionFrame)
+    , miraDerecha(otro.miraDerecha)
+    , enCaidaFinal(otro.enCaidaFinal)
+    , vidas(otro.vidas)
+    , energia(otro.energia)
+    , velMax(otro.velMax)
+    , enSuelo(otro.enSuelo)
+    , puedeDoubleSalto(otro.puedeDoubleSalto)
+    , fuerzaSalto(otro.fuerzaSalto)
+    , saltosRestantes(otro.saltosRestantes)
+    , tiempoViento(otro.tiempoViento)
+    , yMasAlta(otro.yMasAlta)
+    , plataformasCalda(otro.plataformasCalda)
+    , deslizando(otro.deslizando)
+    , tiempoDesliz(otro.tiempoDesliz)
+    , boostActivo(otro.boostActivo)
+    , tiempoBoost(otro.tiempoBoost)
+    , factorSigilo(otro.factorSigilo)
+    , Sprite(nullptr)    // no copiar puntero crudo de hoja de sprites
+    // Los vectores de frames se recargan con cargarSpritesNivelX()
+{
+    std::copy(std::begin(otro.keys), std::end(otro.keys), std::begin(keys));
+}
+
+// ============================================================
+//  operator==
+// ============================================================
+bool Personaje::operator==(const Personaje& otro) const
+{
+    return x == otro.x && y == otro.y && vidas == otro.vidas;
+}
+
 Personaje::~Personaje() { delete Sprite; }
 
 // ============================================================
@@ -66,12 +112,17 @@ void Personaje::keyReleased(int key) { if(key>=0&&key<4) keys[key]=false; }
 void Personaje::saltar()
 {
     if (saltosRestantes <= 0) return;
+
     Vy = -fuerzaSalto;
     enSuelo = false;
     saltosRestantes--;
+
+    // Ambos saltos (primero y doble) usan la misma animación SALTANDO,
+    // ya que DOBLE_SALTO no tiene frames cargados en el spritesheet actual.
     estadoAnim  = EstadoAnim::SALTANDO;
     frameActual = 0;
     tiempoFrame = 0.f;
+
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
@@ -121,16 +172,16 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
         return;
     }
 
-    // ── Movimiento horizontal ─────────────────────────────────
+    // ── 1. Movimiento horizontal ──────────────────────────────
     bool teclaHoriz = keys[0] || keys[1];
 
     if (enSuelo) {
         // En suelo: control directo + fricción al soltar tecla
-        if (keys[0]) { Vx = -velMax; miraDerecha = false; }
-        else if (keys[1]) { Vx =  velMax; miraDerecha = true; }
+        if (keys[0])      { Vx = -velMax; miraDerecha = false; }
+        else if (keys[1]) { Vx =  velMax; miraDerecha = true;  }
         else GestorFisicas::aplicarFriccion(Vx, dt);
     } else {
-        // En el aire: la tecla fija dirección base, pero el viento se acumula encima
+        // En el aire: la tecla fija dirección base, el viento se acumula encima
         if (teclaHoriz) {
             Vx = keys[0] ? -velMax : velMax;
             if (keys[0]) miraDerecha = false;
@@ -144,27 +195,36 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     // Resetear acumulador de viento al tocar suelo
     if (enSuelo) tiempoViento = 0.f;
 
-    // ── Inclinación visual por viento (solo en el aire) ───────
+    // ── 2. Inclinación visual por viento (solo en el aire) ────
     if (itemGrafico) {
         if (!enSuelo) {
             float fuerzaViento = GestorFisicas::calcularFuerzaViento(tiempoTotal);
-            // Inclinar hasta ±15° según la amplitud máxima del viento
             float angulo = (fuerzaViento / GestorFisicas::VIENTO_AMPLITUD) * 15.f;
             itemGrafico->setTransformOriginPoint(ANCHO / 2.f, ALTO / 2.f);
             itemGrafico->setRotation(angulo);
         } else {
-            itemGrafico->setRotation(0.f);  // volver vertical al aterrizar
+            itemGrafico->setRotation(0.f);
         }
     }
 
-    // ── Gravedad + posición ───────────────────────────────────
+    // ── 3. Gravedad + posición ────────────────────────────────
     GestorFisicas::aplicarGravedad(Vy, y, dt);
     x += Vx * dt;
 
-    // ── Registrar posición más alta alcanzada ─────────────────
+    // ── 4. Registrar posición más alta alcanzada ──────────────
     if (y < yMasAlta) yMasAlta = y;
 
-    // ── Estado de animación ───────────────────────────────────
+    // ── 5. Timer de boost ─────────────────────────────────────
+    if (boostActivo)
+    {
+        tiempoBoost -= dt;
+        if (tiempoBoost <= 0.f) { boostActivo = false; tiempoBoost = 0.f; }
+    }
+
+    // ── 6. Determinar estado de animación ─────────────────────
+    // Solo usamos los 3 estados que tienen frames cargados.
+    // DOBLE_SALTO, VIENTO_CAIDA y COLISION no tienen frames aún,
+    // todos colapsan a SALTANDO o IDLE para evitar sprites rotos.
     EstadoAnim nuevo;
     if (!enSuelo)
         nuevo = EstadoAnim::SALTANDO;
@@ -173,16 +233,19 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     else
         nuevo = EstadoAnim::IDLE;
 
-    if (nuevo != estadoAnim) { estadoAnim=nuevo; frameActual=0; tiempoFrame=0.f; }
+    if (nuevo != estadoAnim) { estadoAnim = nuevo; frameActual = 0; tiempoFrame = 0.f; }
 
-    std::vector<QPixmap>* frames = nullptr;
+    // ── 7. Seleccionar frames y avanzar animación ─────────────
+    std::vector<QPixmap>* framesN1 = nullptr;
     switch (estadoAnim) {
-    case EstadoAnim::IDLE:      frames = &n1_framesIdle;      break;
-    case EstadoAnim::CORRIENDO: frames = &n1_framesCorriendo; break;
-    case EstadoAnim::SALTANDO:  frames = &n1_framesSaltando;  break;
-    default:                    frames = &n1_framesIdle;      break;
+    case EstadoAnim::IDLE:      framesN1 = &n1_framesIdle;      break;
+    case EstadoAnim::CORRIENDO: framesN1 = &n1_framesCorriendo; break;
+    case EstadoAnim::SALTANDO:  framesN1 = &n1_framesSaltando;  break;
+    default:                    framesN1 = &n1_framesIdle;      break;
     }
-    if (frames) tickAnimacion(dt, *frames, true);
+
+    if (framesN1 && !framesN1->empty()) tickAnimacion(dt, *framesN1, true);
+
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
@@ -263,7 +326,6 @@ void Personaje::actualizarNivel2(float dt)
         break;
     }
 
-    // Movimiento vertical dominante → animación más lenta
     if (vt > 10.f && std::abs(Vy) > std::abs(Vx))
         multAnim = 1.8f;
 
@@ -348,7 +410,7 @@ void Personaje::cargarSpritesNivel1()
             .scaled(TW,TH,Qt::KeepAspectRatio,Qt::SmoothTransformation);
     };
 
-    // IDLE
+    // IDLE (1 frame)
     n1_framesIdle.clear();
     n1_framesIdle.push_back(extraer(17, 44, 36, 65));
 
@@ -377,8 +439,14 @@ void Personaje::cargarSpritesNivel1()
     n1_framesSaltando.push_back(extraer(552, 110, 43, 98));
     n1_framesSaltando.push_back(extraer(605, 110, 39, 98));
 
+    // DOBLE SALTO — vacío hasta que tengas los frames en el sheet
+    n1_framesDobleSalto.clear();
+
     // VIENTO — OMITIDA
     n1_framesVientoCalda.clear();
+
+    // COLISIÓN — vacío hasta que tengas los frames en el sheet
+    n1_framesColision.clear();
 
     // CAÍDA FINAL (3 frames del personaje, ignorar obstáculos/UI)
     n1_framesCaidaFinal.clear();
@@ -401,8 +469,7 @@ void Personaje::cargarSpritesNivel1()
 
 // ============================================================
 //  cargarSpritesNivel2
-//  Spritesheet: Sprites_kael_movimientos.png (nivel 2 real)
-//  Lambda con fw/fh/separacion explícitos (versión REMOTE)
+//  Spritesheet: Sprites_kael_movimientos.png
 // ============================================================
 void Personaje::cargarSpritesNivel2()
 {
@@ -509,10 +576,10 @@ void Personaje::setHitboxOffset(float offsetX, float offsetY,
 // ============================================================
 //  Colisión / reset
 // ============================================================
-void Personaje::aterrizarEnSuelo(float)
+void Personaje::aterrizarEnSuelo(float /*suloY*/)
 {
     Vy = 0.f; enSuelo = true; saltosRestantes = 2; tiempoViento = 0.f;
-    yMasAlta = y;
+    yMasAlta = y;   // resetear referencia de altura tras aterrizar
     if (itemGrafico) itemGrafico->setPos(x, y);
 }
 
@@ -520,12 +587,17 @@ void Personaje::despegarSuelo() { enSuelo = false; }
 
 void Personaje::recibirDanio(int n) { vidas -= n; if (vidas<0) vidas=0; }
 
+void Personaje::setVidas(int cantidad) { vidas = cantidad; }
+
 void Personaje::resetearPosicion(float rx, float ry)
 {
     x=rx; y=ry; Vx=0.f; Vy=0.f;
     enSuelo=false; saltosRestantes=2;
     tiempoViento=0.f; enCaidaFinal=false;
     yMasAlta=ry; plataformasCalda=0;
+    std::fill(std::begin(keys), std::end(keys), false);
+    deslizando=false;  tiempoDesliz=0.f;
+    boostActivo=false; tiempoBoost=0.f;
     estadoAnim=EstadoAnim::IDLE; frameActual=0;
     if (itemGrafico) itemGrafico->setPos(x,y);
 }

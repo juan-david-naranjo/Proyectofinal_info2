@@ -5,15 +5,17 @@
 #include <vector>
 #include <QKeyEvent>
 #include <QPixmap>
+#include <QDebug>
+#include <QString>
 #include <QPainter>
 
 // ============================================================
-//  Personaje — Kael  (merge LOCAL + REMOTE)
+//  Personaje — Kael
 //
 //  Nivel 1 (spritesheet 669x373, fondo negro):
 //    Fila 1 (y=44-109):  IDLE (1f) + CORRER (7f)
-//    Fila 2 (y=110-208): SALTO completo (12f)
-//    Fila 3 (y=214-280): VIENTO — OMITIDA (pendiente ventilador)
+//    Fila 2 (y=110-208): SALTO completo (12f) + DOBLE SALTO
+//    Fila 3 (y=214-280): VIENTO CAÍDA + COLISIÓN
 //    Fila 4 (y=294-353): CAÍDA FINAL (3f) — ≥4 plataformas de caída
 //
 //  Nivel 2:
@@ -27,6 +29,10 @@ public:
     Personaje();
     explicit Personaje(float x, float y);
     ~Personaje() override;
+
+    // ── Sobrecargas obligatorias ──────────────────────────────
+    Personaje(const Personaje& otro);
+    bool operator==(const Personaje& otro) const;
 
     // ── Entrada ──────────────────────────────────────────────
     void keyPressed (int key);
@@ -74,6 +80,9 @@ public:
     float getHitboxOffsetX() const { return hitboxOffsetX; }
     float getHitboxOffsetY() const { return hitboxOffsetY; }
 
+    // ── Setters ───────────────────────────────────────────────
+    void setVidas(int cantidad);    // setter para nivel 2
+
     // ── Daño / reset ──────────────────────────────────────────
     void recibirDanio(int cantidad = 1);
     void resetearPosicion(float rx, float ry);
@@ -93,18 +102,20 @@ private:
     QPixmap eliminarFondo(const QPixmap& src, QColor cf, int tol);
 
     // ── Animaciones Nivel 1 ───────────────────────────────────
-    std::vector<QPixmap> n1_framesIdle;          // Fila 1, grupo 1   (1f)
-    std::vector<QPixmap> n1_framesCorriendo;     // Fila 1, grupos 2-8 (7f)
-    std::vector<QPixmap> n1_framesSaltando;      // Fila 2, todos     (12f)
-    std::vector<QPixmap> n1_framesVientoCalda;   // Fila 3 — OMITIDA, siempre vacío
-    std::vector<QPixmap> n1_framesCaidaFinal;    // Fila 4, grupos 1-3 (3f)
+    std::vector<QPixmap> n1_framesIdle;
+    std::vector<QPixmap> n1_framesCorriendo;
+    std::vector<QPixmap> n1_framesSaltando;
+    std::vector<QPixmap> n1_framesDobleSalto;
+    std::vector<QPixmap> n1_framesVientoCalda;
+    std::vector<QPixmap> n1_framesColision;
+    std::vector<QPixmap> n1_framesCaidaFinal;
 
     // ── Animaciones Nivel 2 ───────────────────────────────────
     std::vector<QPixmap> framesIdle;
     std::vector<QPixmap> framesCorriendo;
     std::vector<QPixmap> framesDeslizando;
-    std::vector<QPixmap> framesUprun;      // movimiento hacia arriba
-    std::vector<QPixmap> framesDownrun;    // movimiento hacia abajo
+    std::vector<QPixmap> framesUprun;
+    std::vector<QPixmap> framesDownrun;
 
     // ── Estado de animación ───────────────────────────────────
     enum class EstadoAnim {
@@ -113,6 +124,9 @@ private:
         CORRIENDO,
         // Nivel 1
         SALTANDO,
+        DOBLE_SALTO,
+        VIENTO_CAIDA,
+        COLISION,
         CAIDA_FINAL,
         // Nivel 2
         CORRIENDO_ARRIBA,

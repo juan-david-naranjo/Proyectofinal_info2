@@ -19,6 +19,8 @@ public:
     bool  completado;
     float tiempoAcumulado;     // Para el viento y otras físicas time-based
 
+    bool operator==(const Nivel& otro) const;           // -> Sobrecarga Obligatoria
+
     std::vector<Plataforma*>   plataformas;
     Personaje*                 jugador;
 
@@ -35,6 +37,8 @@ public:
     void resolverColisiones();
 
 protected:
+
+    Nivel(const Nivel& otro);                           // -> Sobrecarga Obligatoria
     void limpiarPlataformas();
 };
 

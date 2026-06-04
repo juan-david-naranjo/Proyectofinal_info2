@@ -3,6 +3,7 @@
 
 #include "enemigo.h"
 #include <vector>
+#include <QDebug>
 
 // ============================================================
 //  RobotSeguridad  —  Agente inteligente del Nivel 2
@@ -27,6 +28,7 @@
 
 enum class EstadoAgente { PATRULLAJE, PERSECUCION };
 
+
 class RobotSeguridad : public Enemigo
 {
 public:
@@ -46,6 +48,9 @@ public:
                    float valPersecucion,
                    const std::vector<Punto2D> &waypoints);
 
+    RobotSeguridad(const RobotSeguridad& otro);
+    bool operator==(const RobotSeguridad& otro) const;
+
     // ── Estado del agente ────────────────────────────────────
     EstadoAgente estado;
 
@@ -58,8 +63,9 @@ public:
     // Método completo que el nivel llama cada tick
     // void tick(float jugadorX, float jugadorY, float dt);
 
-    void tick(float jx, float jy, float dt, bool jugadorOculto = false);
-
+    //void tick(float jx, float jy, float dt, bool jugadorOculto = false);
+    void tick(float jx, float jy, float dt, bool jugadorOculto,
+              const std::vector<Hitbox>& paredes = {});
 
     // Actualiza lista de waypoints con la última posición vista
     void actualizarWaypoints();
@@ -82,12 +88,10 @@ public:
     }
 
     void cargarSprites(const QPixmap& sheet);
-
-
-
     ~RobotSeguridad() override = default;
 
 private:
+    std::vector<Hitbox> paredesCache;
     float radioDeteccion;
     float radioDesenganche;
     float velPatrulla;
@@ -96,8 +100,6 @@ private:
     // Miembros privados nuevos (sección private)
     std::vector<QPixmap> framesPatrullaje;
     std::vector<QPixmap> framesAlert;
-     // QVector<QPixmap> framesPatrullaje;
-     // QVector<QPixmap> framesAlert;
      int   frameActual            = 0;
      float tiempoFrame            = 0.f;
      float duracionFramePatrullaje;
@@ -116,7 +118,9 @@ private:
      static constexpr float RADIO_LLEGADA_DESVIO = 25.f;
 
 
-
+     // Los métodos nuevos ya no necesitan recibir paredes como parámetro:
+     bool posicionLibre(float px, float py, float tam) const;
+     void moverHaciaConEvacion(float tx, float ty, float dt);
 
 
 

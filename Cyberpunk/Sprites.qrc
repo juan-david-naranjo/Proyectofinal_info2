@@ -11,6 +11,10 @@
         <file>Sprites/Nivel2/Sprites_kael_movimientos.png</file>
         <file>Sprites/Nivel2/Escenario_V2.png</file>
         <file>Sprites/Nivel2/murosV2.png</file>
+        <file>Sprites/Nivel2/Robot_V2.png</file>
+        <file>Sprites/Nivel2/computer_.png</file>
+        <file>Sprites/Nivel2/Zonas_ocultas.png</file>
+        <file>Sprites/Nivel2/Escenario_V2 sin marca de agua.png</file>
     </qresource>
     <qresource prefix="/Sonidos">
         <file>Sonidos/sonido_fondo.mp3</file>
@@ -26,5 +30,6 @@
         <file>Sonidos/End of Line (From TRON_ LegacyScore).mp3</file>
         <file>Sonidos/clickwav.wav</file>
         <file>Sonidos/hurtwav.wav</file>
+        <file>Sonidos/persecusionwav.wav</file>
     </qresource>
 </RCC>
