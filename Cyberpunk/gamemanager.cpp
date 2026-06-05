@@ -225,9 +225,10 @@ void GameManager::irANivel1()
 void GameManager::irANivel2()
 {
     detenerTodaMusica();
+    //aplicar dificultad
+    nivel2->setDificultad(dificultadActual == Dificultad::DIFICIL);
 
     itemsOverlay.clear();   // escena->clear() destruirá estos ítems
-
     nivel2->limpiarEscena();
     if (jugador) jugador->invalidarItem();
     escena->clear();
