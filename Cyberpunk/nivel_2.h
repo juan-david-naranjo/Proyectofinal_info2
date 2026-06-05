@@ -21,19 +21,7 @@
 // ============================================================================
 //  Nivel_2 — Vista cenital, laberinto + sigilo
 // ============================================================================
-struct ZonaOculta {
-    float x, y, w, h;
-};
 
-enum class EstadoZona { LIBRE, PROCESANDO, OCULTO };
-
-struct DatoEstadoZona {
-    EstadoZona estado   = EstadoZona::LIBRE;
-    bool fueUsada       = false; // Si fue usada, muestra frameOcupada al salir
-    float tiempoZona    = 0.f;
-    int frame           = 0;
-    float tiempoFrame   = 0.f;
-};
 
 class Nivel_2 : public Nivel
 {
@@ -83,9 +71,6 @@ public:
     void loadDestAnim();
     void addHudScene();
 
-    // Actualizaciones de subsistemas públicos
-    void actualizarZonasOcultas(float dt);
-
     // ════════════════════════════════════════════════════════════════════════
     //  ATRIBUTOS PÚBLICOS
     // ════════════════════════════════════════════════════════════════════════
@@ -94,17 +79,7 @@ public:
     std::vector<RobotSeguridad*> robots;
 
     // Elementos y lógica de Zonas Ocultas
-    std::vector<QGraphicsPixmapItem*> itemsZonaSprites;
-    std::vector<DatoEstadoZona>       estadosZonas;
-    std::vector<QPixmap>              framesZonaApertura;
-    QPixmap                           frameZonaOcupada;
     bool jugadorCompletamenteOculto   = false;
-    int  zonaActivaIdx                = -1;
-
-    // Constantes de Configuración
-    static constexpr float UMBRAL_QUIETO         = 15.f; // px/s — umbral "quieto"
-    static constexpr float TIEMPO_PARA_OCULTARSE = 2.f;  // segundos
-    float duracionFrameZona                      = 0.1f;
 
 private:
 
@@ -182,10 +157,6 @@ private:
     float tiempoFrameDestr    = 0.f;
     float duracionFrameDestr  = 0.12f;
     bool  animandoDestruccion = false;
-
-    // Sistema de Sigilo (Sombra)
-    std::vector<ZonaOculta>     zonasOcultas;
-    std::vector<QGraphicsItem*> itemsZonas; // Visuales oscuros
 
     // IA y Seguimiento de Agentes
     std::vector<EstadoAgente> estadosAnteriores;

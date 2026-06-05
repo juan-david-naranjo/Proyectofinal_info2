@@ -58,12 +58,7 @@ Nivel_2::Nivel_2(const Nivel_2& otro)
     , tiempoFrameDestr(otro.tiempoFrameDestr)
     , duracionFrameDestr(otro.duracionFrameDestr)
     , framesDestruccion(otro.framesDestruccion)       // QPixmap copy-on-write
-    , zonasOcultas(otro.zonasOcultas)
-    , estadosZonas(otro.estadosZonas)
     , jugadorCompletamenteOculto(otro.jugadorCompletamenteOculto)
-    , zonaActivaIdx(otro.zonaActivaIdx)
-    , framesZonaApertura(otro.framesZonaApertura)
-    , frameZonaOcupada(otro.frameZonaOcupada)
     , sinVidas(otro.sinVidas)
     , estadosAnteriores(otro.estadosAnteriores)
     , Escenario(otro.Escenario)                       // QPixmap copy-on-write
@@ -182,12 +177,6 @@ void Nivel_2::generarLaberinto()
             new Plataforma(w.x, w.y, w.w, w.h, false, w.tipo));
 
 
-    zonasOcultas = {
-                    { 8.f, 66.f, 150.f, 100.f },
-                    { 26.f, 660.f, 150.f, 150.f },
-                    { 471.f, 360.f, 100.f, 100.f },
-                    };
-    estadosZonas.assign(zonasOcultas.size(), DatoEstadoZona{});
 }
 
 // ── Generar robots ────────────────────────────────────────────────────────────
@@ -382,7 +371,7 @@ void Nivel_2::agregarItemsEscena()
     addObjetivoScene();
     addRobotScene();
     addHudScene();
-    addHideZone();
+
 }
 
 
@@ -704,9 +693,6 @@ void Nivel_2::actualizar(float dt)
     // ── Actualizar HUD cada tick ──────────────────────────────────────────────
     actualizarHUD();
 
-    // 1. Agregar llamada a actualizarZonasOcultas (antes de verificarDeteccion):
-    actualizarZonasOcultas(dt);
-
     // 2. Corregir el parpadeo de iframes para que no interfiera con el ocultamiento:
     if (tiempoInvulnerable > 0.f)
     {
@@ -850,20 +836,7 @@ void Nivel_2::verificarDeteccion()
 }
 
 
-bool Nivel_2::jugadorEnSombra() const
-{
-    // // Usar la posición base sin offset — más predecible
-    // float px = jugador->getX();
-    // float py = jugador->getY();
 
-    // for (const auto& z : zonasOcultas)
-    //     if (px >= z.x && px <= z.x + z.w &&
-    //         py >= z.y && py <= z.y + z.h)
-    //         return true;
-
-    // return false;
-    return jugadorCompletamenteOculto;   // solo oculto REAL, no solo estar en la zona
-}
 
 
 
@@ -1024,16 +997,9 @@ void Nivel_2::limpiarEscena()
         }
     }
     robots.clear(); // Vacía el vector
-
-    itemsZonaSprites.clear();
-    estadosZonas.clear();
     jugadorCompletamenteOculto = false;
     estadosAnteriores.clear(); // ¡CRÍTICO PARA EVITAR EL CRASH DE DETECCIÓN!
-    zonasOcultas.clear();      // ¡Evita que las zonas se dupliquen al reiniciar!
-
-
     itemsParedes.clear();
-    itemsZonas.clear();
     itemsDeteccion.clear();
     itemObjetivo = nullptr;
     //debugRobotsRect.clear();     // ← agregar
@@ -1046,11 +1012,7 @@ void Nivel_2::limpiarEscena()
     framesDestruccion.clear();
     hudBarraBoost =nullptr;
     hudFondoBoost =nullptr;
-    itemsZonaSprites.clear();         // ← agregar
-    estadosZonas.clear();             // ← agregar
     jugadorCompletamenteOculto = false; // ← agregar
-    zonaActivaIdx = -1;               // ← agregar
-    framesZonaApertura.clear();       // ← agregar (se recargan en agregarItemsEscena)
     sonidoHackeoLoop.stop(); // Corta el bucle del hackeo si se quedó sonando
     sonidoDeteccion.stop();  // Corta el sonido de alerta de los robots
     sonidoDanio.stop();       // Corta el sonido de recibir daño
@@ -1125,70 +1087,6 @@ void Nivel_2::actualizarAnimDestruccion(float dt)
         itemObjetivo->setPixmap(framesDestruccion[frameDestruccion]);
 }
 
-void Nivel_2::cargarSpritesZonas(const QPixmap& hoja,
-                                 int oxAnim,  int oyAnim,  int fwA, int fhA,
-                                 int numAnim, int sepAnim,
-                                 int oxE, int oyE, int fwE, int fhE,
-                                 const std::vector<QColor>& fondos,int tolerancia)
-{
-    auto quitarFondos = [](const QPixmap& src,
-                           const std::vector<QColor>& fondos,
-                           int tol) -> QPixmap
-    {
-        if (fondos.empty()) return src;
-
-        QImage img = src.toImage().convertToFormat(QImage::Format_ARGB32);
-
-        for (int py = 0; py < img.height(); py++)
-        {
-            for (int px = 0; px < img.width(); px++)
-            {
-                QColor p = img.pixelColor(px, py);
-                for (const QColor& f : fondos)
-                {
-                    if (std::abs(p.red()   - f.red())   <= tol &&
-                        std::abs(p.green() - f.green()) <= tol &&
-                        std::abs(p.blue()  - f.blue())  <= tol)
-                    {
-                        img.setPixelColor(px, py, Qt::transparent);
-                        break;   // ya encontró un color que coincide, pasar al siguiente pixel
-                    }
-                }
-            }
-        }
-        return QPixmap::fromImage(img);
-    };
-
-    // ── Frames de animación (apertura) ────────────────────────────────────
-    framesZonaApertura.clear();
-    for (int i = 0; i < numAnim; i++)
-    {
-        int y = oyAnim + i * (fhA + sepAnim);
-        QPixmap frame;
-        if (y + fhA <= hoja.height() && oyAnim + fhA <= hoja.height())
-            frame = hoja.copy(oxAnim, y, fwA, fhA);
-        else { frame = QPixmap(fwA, fhA); frame.fill(Qt::transparent); }
-        framesZonaApertura.push_back(quitarFondos(frame, fondos,tolerancia));
-    }
-
-    // ── Frame estático "ocupado / post-salida" ────────────────────────────
-    if (oxE + fwE <= hoja.width() && oyE + fhE <= hoja.height())
-        frameZonaOcupada = quitarFondos(hoja.copy(oxE, oyE, fwE, fhE), fondos, tolerancia);
-    else { frameZonaOcupada = QPixmap(fwE, fhE); frameZonaOcupada.fill(Qt::transparent); }
-
-    // ── Aplicar frame inicial a cada zona ─────────────────────────────────
-    for (int i = 0; i < (int)itemsZonaSprites.size(); i++)
-    {
-        if (!itemsZonaSprites[i]) continue;
-        const auto& z = zonasOcultas[i];
-        if (!framesZonaApertura.empty())
-        {
-            QPixmap p = framesZonaApertura[0].scaled(
-                (int)z.w, (int)z.h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            itemsZonaSprites[i]->setPixmap(p);
-        }
-    }
-}
 
 void Nivel_2::stopMusic()
 {
@@ -1349,27 +1247,6 @@ void Nivel_2::addObjetivoScene()
     escena->addItem(itemBarraRelleno);
 }
 
-void Nivel_2::addHideZone()
-{
-    // ── Cargar hoja de sprites de zonas ──────────────────────────────────────
-    QPixmap hojaZonas(":/Kael_nivel2/Sprites/Nivel2/Zonas_ocultas.png"); // ← tu ruta
-    std::vector<QColor> fondosZona = {
-        QColor("#223f45"),  // Fondo predominante
-        QColor("#2d3f47"),  // Ruido de compresión 1
-        QColor("#293e47")   // Ruido de compresión 2
-    };
-    if (!hojaZonas.isNull())
-    {
-        cargarSpritesZonas(hojaZonas,
-                           //  animación apertura: ox, oy, fw, fh, numFrames, separación
-                           602,   168,   112, 90, 5,  22,
-                           //  frame estático (ocupado/salida): ox, oy, fw, fh
-                           0, 800,   100, 100,
-                           fondosZona,12);  // color de fondo a eliminar
-    }
-    else qDebug() << "WARN: hoja de zonas ocultas no cargó";
-
-}
 
 
 void Nivel_2::loadDestAnim(){
@@ -1419,17 +1296,6 @@ void Nivel_2::addHudScene()
         escena->addItem(corazon);
         itemsCorazones.push_back(corazon);
     }
-    // ── Sprites de zonas ocultas ──────────────────────────────────────────────
-    itemsZonaSprites.clear();
-    for (const auto& z : zonasOcultas)
-    {
-        QGraphicsPixmapItem* item = new QGraphicsPixmapItem();
-        item->setPos(z.x, z.y);
-        item->setZValue(5.0);   // encima del jugador (z=4) para cubrirlo al ocultarse
-        escena->addItem(item);
-        itemsZonas.push_back(item);        // para cleanup en limpiarEscena
-        itemsZonaSprites.push_back(item);
-    }
 
     float posX = 1094.f;  // Ajusta la posición en tu pantalla
     float posY = 750.f;  // Abajo del timer/corazones
@@ -1452,94 +1318,3 @@ void Nivel_2::addHudScene()
 
 }
 
-void Nivel_2::actualizarZonasOcultas(float dt)
-{
-    if (!jugador || itemsZonaSprites.empty()) return;
-
-    float jx = jugador->getX();
-    float jy = jugador->getY();
-    float velTotal = std::sqrt(jugador->getVx() * jugador->getVx() +
-                               jugador->getVy() * jugador->getVy());
-    bool estaQuieto = velTotal < UMBRAL_QUIETO;
-
-    // ── Encontrar en qué zona está el jugador ─────────────────────────────
-    int zonaActual = -1;
-    for (int i = 0; i < (int)zonasOcultas.size(); i++) {
-        const auto& z = zonasOcultas[i];
-        if (jx >= z.x && jx <= z.x + z.w &&
-            jy >= z.y && jy <= z.y + z.h)
-        { zonaActual = i; break; }
-    }
-
-    for (int i = 0; i < (int)zonasOcultas.size(); i++)
-    {
-        auto& dato = estadosZonas[i];
-        // ← NUNCA tocamos el pixmap del item de zona.
-        //   Siempre muestra el frame 0 cargado al inicio.
-
-        if (i == zonaActual)
-        {
-            switch (dato.estado)
-            {
-            case EstadoZona::LIBRE:
-                if (estaQuieto) {
-                    dato.estado     = EstadoZona::PROCESANDO;
-                    dato.tiempoZona = 0.f;
-                }
-                break;
-
-            case EstadoZona::PROCESANDO:
-                if (!estaQuieto) {
-                    dato.estado     = EstadoZona::LIBRE;
-                    dato.tiempoZona = 0.f;
-                } else {
-                    dato.tiempoZona += dt;
-                    if (dato.tiempoZona >= TIEMPO_PARA_OCULTARSE)
-                    {
-                        dato.estado            = EstadoZona::OCULTO;
-                        jugadorCompletamenteOculto = true;
-                        zonaActivaIdx          = i;
-
-                        // Solo el jugador desaparece
-                        // La zona NO cambia — sigue con su frame 0
-                        if (jugador->getItem())
-                            jugador->getItem()->setVisible(false);
-                    }
-                }
-                break;
-
-            case EstadoZona::OCULTO:
-                jugadorCompletamenteOculto = true;
-                if (!estaQuieto) {
-                    // Salir del escondite
-                    dato.estado            = EstadoZona::LIBRE;
-                    jugadorCompletamenteOculto = false;
-                    zonaActivaIdx          = -1;
-
-                    // Solo el jugador reaparece
-                    // La zona NO cambia — sigue con su frame 0
-                    if (jugador->getItem())
-                        jugador->getItem()->setVisible(true);
-                } else {
-                    if (jugador->getItem())
-                        jugador->getItem()->setVisible(false);
-                }
-                break;
-            }
-        }
-        else
-        {
-            if (dato.estado != EstadoZona::LIBRE)
-            {
-                dato.estado     = EstadoZona::LIBRE;
-                dato.tiempoZona = 0.f;
-                if (i == zonaActivaIdx) {
-                    jugadorCompletamenteOculto = false;
-                    zonaActivaIdx = -1;
-                    if (jugador->getItem())
-                        jugador->getItem()->setVisible(true);
-                }
-            }
-        }
-    }
-}
