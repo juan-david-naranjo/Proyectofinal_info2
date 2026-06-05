@@ -22,6 +22,11 @@ BotonMenu::BotonMenu(const QString& texto,
     setCursor(QCursor(Qt::PointingHandCursor));
 }
 
+bool BotonMenu::operator==(const BotonMenu& otro) const
+{
+    // Dos botones son iguales si tienen el mismo texto y el mismo tamaño
+    return texto == otro.texto && ancho == otro.ancho && alto == otro.alto;
+}
 
 
 

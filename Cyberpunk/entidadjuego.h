@@ -66,11 +66,13 @@ protected:
 public:
     EntidadJuego();
     EntidadJuego(float X, float Y);
+    EntidadJuego(const EntidadJuego& otro);
+    bool operator==(const EntidadJuego& otro) const;
 
 
 
     //----------Getters-----------
-    float getX()     const;
+    float getX()     const;     //faltaba esta linea
     float getY()     const;
     float getVx()    const;
     float getVy()    const;

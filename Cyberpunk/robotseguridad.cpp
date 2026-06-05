@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 
+
 RobotSeguridad::RobotSeguridad(float px, float py,
                                float rDeteccion,
                                float rDesenganche,
@@ -18,8 +19,19 @@ RobotSeguridad::RobotSeguridad(float px, float py,
     , waypoints(wps)
     , frameActual(0)
     , tiempoFrame(0.f)
-    , duracionFramePatrullaje(0.1f)   // 10 fps en patrullaje
-    , duracionFrameAlert(0.15f)       // 6-7 fps en alerta (más dramático)
+    , duracionFramePatrullaje(0.1f)
+    , duracionFrameAlert(0.15f)
+    // ── Estos son los que faltaban ─────────────────────────────
+    , indiceWaypoint(0)          // ← crítico: índice al primer waypoint
+    , tiempoPersecucion(0.f)
+    , distanciaJugador(0.f)
+    , posXAnterior(px)           // posición anterior = posición inicial
+    , posYAnterior(py)
+    , tiempoStuck(0.f)
+    , tieneDesvio(false)         // ← crítico: sin desvío al arrancar
+    , puntoDesvio(px, py)
+    , ladoDesvio(1.f)            // ← crítico: debe ser ±1, nunca 0
+
 {
     // El ítem gráfico lo asigna el nivel
     itemGrafico = nullptr;
@@ -29,6 +41,41 @@ RobotSeguridad::RobotSeguridad(float px, float py,
         waypoints.push_back(Punto2D(px, py));
 }
 
+//-------------- Sobrecargas-----------------
+RobotSeguridad::RobotSeguridad(const RobotSeguridad& otro)
+    : Enemigo(otro)
+    , estado(otro.estado)
+    , radioDeteccion(otro.radioDeteccion)
+    , radioDesenganche(otro.radioDesenganche)
+    , velPatrulla(otro.velPatrulla)
+    , velPersecucion(otro.velPersecucion)
+    , waypoints(otro.waypoints)          // copia profunda del vector
+    , historial(otro.historial)          // copia profunda del historial
+    , indiceWaypoint(otro.indiceWaypoint)
+    , tiempoPersecucion(otro.tiempoPersecucion)
+    , distanciaJugador(otro.distanciaJugador)
+    , frameActual(otro.frameActual)
+    , tiempoFrame(otro.tiempoFrame)
+    , duracionFramePatrullaje(otro.duracionFramePatrullaje)
+    , duracionFrameAlert(otro.duracionFrameAlert)
+    , framesPatrullaje(otro.framesPatrullaje)   // QPixmap comparte datos (implícitamente)
+    , framesAlert(otro.framesAlert)
+    , posXAnterior(otro.posXAnterior)
+    , posYAnterior(otro.posYAnterior)
+    , tiempoStuck(otro.tiempoStuck)
+    , tieneDesvio(otro.tieneDesvio)
+    , puntoDesvio(otro.puntoDesvio)
+    , ladoDesvio(otro.ladoDesvio)
+    , velObjetivo(otro.velObjetivo)
+    , paredesCache(otro.paredesCache)
+// itemGrafico = nullptr por herencia de EntidadJuego(otro)
+{}
+
+bool RobotSeguridad::operator==(const RobotSeguridad& otro) const
+{
+    // Iguales si están en la misma posición y en el mismo estado de IA
+    return x == otro.x && y == otro.y && estado == otro.estado;
+}
 // ════════════════════════════════════════════════════════════════════════════
 //  cargarSprites
 //  Recibe la QPixmap ya cargada (misma hoja que el personaje u otra).
@@ -56,19 +103,13 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
         return QPixmap::fromImage(img);
     };
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  ANIMACIÓN DE PATRULLAJE (estado normal, sin detectar al jugador)
-    //
-    //  8 frames · origen (723, 135) · 71 × 70 px · separación 11 px
-    //  Fondo: #2f4b56
-    // ════════════════════════════════════════════════════════════════════════
     framesPatrullaje.clear();
     {
-        const int ox  = 723, oy = 135;
-        const int fw  = 71,  fh = 70;
-        const int sep = 11;
-        const int num = 8;
-        const QColor bg(0x2f, 0x4b, 0x56);
+        const int ox  = 1, oy = 48;
+        const int fw  = 29,  fh = 43;
+        const int sep = 1;
+        const int num = 5;
+        const QColor bg(255, 0, 255);
 
         for (int i = 0; i < num; i++)
         {
@@ -81,56 +122,36 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
                 continue;
             }
             QPixmap frame = sheet.copy(x, oy, fw, fh);
-            framesPatrullaje.push_back(quitarFondo(frame, bg, 10));
+            framesPatrullaje.push_back(quitarFondo(frame, bg, 0));
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  ANIMACIÓN DE ALERTA / PERSECUCIÓN (robot detecta al jugador)
-    //
-    //  3 frames en posiciones irregulares dentro de la hoja:
-    //
-    //    Frame 0 → (791, 295)  251 × 78  fondo #0e1528
-    //    Frame 1 → (953, 392)   77 × 79  (mismo fondo que frame 0)
-    //    Frame 2 → (1036, 328)  79 × 102 fondo #0f172a
-    //
-    //  Al tener tamaños distintos se escalan al tamaño del frame 0 para
-    //  que la transición no cambie el tamaño visual del robot en pantalla.
-    // ════════════════════════════════════════════════════════════════════════
+
     framesAlert.clear();
     {
-        const QColor bg0(0x0e, 0x15, 0x28);
-        const QColor bg2(0x0f, 0x17, 0x2a);
+        const QColor bg(255, 0, 255);
+        // const QColor bg2(0x0f, 0x17, 0x2a);
 
-        // Tamaño de referencia: el del frame más pequeño (77 × 78 aprox.)
-        // Lo normalizamos al tamaño de los frames de patrullaje (71 × 70).
-        const int refW = 71, refH = 70;
+        const int ox  = 1, oy = 222;
+        const int fw  = 80,  fh = 45;
+        const int sep = 1;
+        const int num = 8;
 
-        struct AlertFrame { int x, y, w, h; QColor bg; };
-        static const AlertFrame aFrames[] = {
-                                             { 791, 295, 251, 78,  bg0 },
-                                             { 953, 392,  77, 79,  bg0 },
-                                             {1036, 328,  79, 102, bg2 },
-                                             };
 
-        for (const auto& af : aFrames)
+        for (int i = 0; i < num; i++)
         {
-            QPixmap raw;
-            if (af.x + af.w <= sheet.width() && af.y + af.h <= sheet.height())
-                raw = sheet.copy(af.x, af.y, af.w, af.h);
-            else
+            int x = ox + i * (fw + sep);
+            if (x + fw > sheet.width() || oy + fh > sheet.height())
             {
-                raw = QPixmap(af.w, af.h);
-                raw.fill(Qt::transparent);
+                QPixmap ph(fw, fh);
+                ph.fill(Qt::transparent);
+                framesAlert.push_back(ph);
+                continue;
             }
-
-            QPixmap limpio = quitarFondo(raw, af.bg, 10);
-
-            // Escalar al tamaño de referencia para animación uniforme
-            framesAlert.push_back(
-                limpio.scaled(refW, refH, Qt::KeepAspectRatio, Qt::SmoothTransformation)
-                );
+            QPixmap frame = sheet.copy(x, oy, fw, fh);
+            framesAlert.push_back(quitarFondo(frame, bg, 0));
         }
+
     }
 
     // ── Aplicar primer frame y pivote de rotación en el centro ───────────────
@@ -142,10 +163,43 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
     }
 }
 
+void RobotSeguridad::moverHacia(float tx, float ty, float dt)
+{
+    // ── PROTECCIÓN: Si el objetivo es un fantasma de la memoria, abortamos
+    if (!std::isfinite(tx) || !std::isfinite(ty)) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
+    float velActual = (estado == EstadoAgente::PERSECUCION)
+                          ? velPersecucion
+                          : velPatrulla;
 
+    float dx = tx - x;
+    float dy = ty - y;
+    float dist = std::sqrt(dx*dx + dy*dy);
+    // ── PROTECCIÓN: Validar que la distancia sea real y suficiente
+    if (!std::isfinite(dist) || dist < 1.f) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
 
+    if (dist < 1.f) { Vx = 0; Vy = 0; return; }
 
+    // Dirección normalizada
+    float nx = dx / dist;
+    float ny = dy / dist;
 
+    float targetVx = nx * velActual;
+    float targetVy = ny * velActual;
+    //qDebug() << "mostrando robot antes de aplicarInercia en moverhacia: " << x << " y: " << y;
+    // Aplicar inercia (MRUA)
+    GestorFisicas::aplicarInercia(Vx, targetVx, dt);
+    GestorFisicas::aplicarInercia(Vy, targetVy, dt);
+
+    x += Vx * dt;
+    y += Vy * dt;
+    //qDebug() << "mostrando robot despues de aplicarInercia en moverhacia: " << x << " y: " << y;
+}
 
 
 
@@ -159,6 +213,9 @@ void RobotSeguridad::percibir(float jx, float jy)
     float dx     = jx - x;
     float dy     = jy - y;
     distanciaJugador = std::sqrt(dx*dx + dy*dy);
+    // ← NUEVO: señal de captura (misma geometría que antes en verificarDeteccion)
+    if (GestorFisicas::colisionCirculo(x + 10.f, y + 10.f, jx, jy, RADIO_CAPTURA))
+        capturado = true;
 }
 
 float RobotSeguridad::calcularDistancia() const
@@ -166,44 +223,12 @@ float RobotSeguridad::calcularDistancia() const
     return distanciaJugador;
 }
 
-// ── RAZONAR ──────────────────────────────────────────────────────────────────
-// Evalúa el estado actual y decide la transición.
-// void RobotSeguridad::razonar()
-// {
-//     switch (estado)
-//     {
-//     case EstadoAgente::PATRULLAJE:
-//         // Transición a PERSECUCION si el jugador entra en el radio
-//         if (GestorFisicas::colisionCirculo(x, y,
-//                                            jugadorPosX, jugadorPosY,
-//                                            radioDeteccion))
-//         {
-//             estado = EstadoAgente::PERSECUCION;
-//             tiempoPersecucion = 0.f;
-//             // Guardar posición en historial (aprendizaje)
-//             actualizarWaypoints();
-//         }
-//         break;
 
-//     case EstadoAgente::PERSECUCION:
-//         // Solo puede volver a patrullaje si pasó el tiempo mínimo Y
-//         // el jugador salió del radio de desenganche
-//         if (tiempoPersecucion >= DURACION_MIN_PERSECUCION &&
-//             !GestorFisicas::colisionCirculo(x, y,
-//                                             jugadorPosX, jugadorPosY,
-//                                             radioDesenganche))
-//         {
-//             estado = EstadoAgente::PATRULLAJE;
-//             // El próximo waypoint será la última posición guardada
-//         }
-//         break;
-//     }
-// }
 
 
 void RobotSeguridad::razonar(bool jugadorOculto)
 {
-     //qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
+    //qDebug() << "razonar llamado | oculto:" << jugadorOculto << "| estado:" << (int)estado;
     switch (estado)
     {
     case EstadoAgente::PATRULLAJE:
@@ -214,6 +239,8 @@ void RobotSeguridad::razonar(bool jugadorOculto)
                                            radioDeteccion))
         {
             estado = EstadoAgente::PERSECUCION;
+            frameActual       = 0;    // ← animación de alerta desde frame 0
+            tiempoFrame       = 0.f;
             tiempoPersecucion = 0.f;
             actualizarWaypoints();
         }
@@ -228,6 +255,8 @@ void RobotSeguridad::razonar(bool jugadorOculto)
                                             radioDesenganche))
         {
             estado = EstadoAgente::PATRULLAJE;
+            frameActual       = 0;
+            tiempoFrame       = 0.f;
         }
         break;
     }
@@ -236,116 +265,249 @@ void RobotSeguridad::razonar(bool jugadorOculto)
 
 // ── ACTUAR ───────────────────────────────────────────────────────────────────
 // Ejecuta el movimiento según el estado.
-void RobotSeguridad::actuar(float dt)
-{
+// void RobotSeguridad::actuar(float dt)
+void RobotSeguridad::actuar(float dt){
     switch (estado)
     {
     case EstadoAgente::PATRULLAJE:
     {
-        // Seguir waypoints en orden circular (usando Punto2D, sin Qt)
+        // Sin cambios — waypoints conocidos no necesitan evasión proactiva
         Punto2D objetivo = waypoints[indiceWaypoint];
         float dx = objetivo.x - x;
         float dy = objetivo.y - y;
         float dist = std::sqrt(dx*dx + dy*dy);
-
         if (dist < 8.f)
-        {
-            // Llegó al waypoint → avanzar al siguiente
             indiceWaypoint = (indiceWaypoint + 1) % static_cast<int>(waypoints.size());
-        }
         else
-        {
-            moverHacia(objetivo.x, objetivo.y, dt);
-        }
+            moverHaciaConEvacion(objetivo.x, objetivo.y, dt);
         break;
     }
     case EstadoAgente::PERSECUCION:
     {
         tiempoPersecucion += dt;
 
-        // Guardar historial de posición vista
         if (historial.empty() ||
             std::abs(jugadorPosX - historial.back().x) > 20.f ||
-            std::abs(jugadorPosY - historial.back().y) > 20.f)
-        {
+            std::abs(jugadorPosY - historial.back().y) > 20.f){
+            // historial.push_back(wp);
             historial.push_back(Punto2D(jugadorPosX, jugadorPosY));
+
         }
-
-        // ── Detección de atasco ───────────────────────────────
-        float dxMov = x - posXAnterior;
-        float dyMov = y - posYAnterior;
-        float movimiento = std::sqrt(dxMov*dxMov + dyMov*dyMov);
-
-        // Umbral normalizado a 60fps para que dt no afecte
-        if (movimiento < 3.f * dt * 60.f)
-            tiempoStuck += dt;
-        else
-            tiempoStuck = 0.f;
-
-        posXAnterior = x;
-        posYAnterior = y;
-
-        // ── Si llegó al punto de desvío, cancelarlo ───────────
+        // Solo cambia la llamada final:
         if (tieneDesvio)
-        {
-            float dxD = puntoDesvio.x - x;
-            float dyD = puntoDesvio.y - y;
-            if (std::sqrt(dxD*dxD + dyD*dyD) < RADIO_LLEGADA_DESVIO)
-                tieneDesvio = false;
-        }
-
-        // ── Generar desvío si está atascado ───────────────────
-        if (tiempoStuck >= UMBRAL_STUCK)
-        {
-            float dxJ = jugadorPosX - x;
-            float dyJ = jugadorPosY - y;
-            float dist = std::sqrt(dxJ*dxJ + dyJ*dyJ);
-
-            if (dist > 1.f)
-            {
-                // Dirección normalizada hacia el jugador
-                float nx =  dxJ / dist;
-                float ny =  dyJ / dist;
-
-                // Perpendicular: rotar 90° según ladoDesvio
-                float px = -ny * ladoDesvio;
-                float py =  nx * ladoDesvio;
-
-                puntoDesvio.x = x + px * DIST_DESVIO;
-                puntoDesvio.y = y + py * DIST_DESVIO;
-                tieneDesvio   = true;
-                tiempoStuck   = 0.f;
-                ladoDesvio   *= -1;  // próximo atasco gira al lado contrario
-            }
-        }
-
-        // ── Moverse al desvío o directo al jugador ────────────
-        if (tieneDesvio)
-            moverHacia(puntoDesvio.x, puntoDesvio.y, dt);
+            moverHaciaConEvacion(puntoDesvio.x, puntoDesvio.y, dt);
         else
-            moverHacia(jugadorPosX, jugadorPosY, dt);
-
+            moverHaciaConEvacion(jugadorPosX, jugadorPosY, dt);
         break;
     }
-    // case EstadoAgente::PERSECUCION:
-    // {
-    //     tiempoPersecucion += dt;
-    //     // Guardar la última posición vista (aprendizaje continuo)
-    //     if (historial.empty() ||
-    //         std::abs(jugadorPosX - historial.back().x) > 20.f ||
-    //         std::abs(jugadorPosY - historial.back().y) > 20.f)
-    //     {
-    //         historial.push_back(Punto2D(jugadorPosX, jugadorPosY));
-    //     }
-    //     // Perseguir con velocidad aumentada
-    //     moverHacia(jugadorPosX, jugadorPosY, dt);
-    //     break;
-    // }
     }
 
-    // Sincronizar sprite
+
+    // ── ANIMACIÓN
     if (itemGrafico)
+    {
+        // ── Seleccionar vector de frames según estado ─────────────────────
+        const std::vector<QPixmap>* frames = nullptr;
+        float duracion = duracionFramePatrullaje;
+
+        if (estado == EstadoAgente::PERSECUCION && !framesAlert.empty())
+        {
+            frames   = &framesAlert;
+            duracion = duracionFrameAlert;
+            //qDebug("aqui no esta tirando error 361");
+
+        }
+        else if (!framesPatrullaje.empty())
+        {
+            frames   = &framesPatrullaje;
+            duracion = duracionFramePatrullaje;
+            //qDebug("aqui no esta tirando error 368");
+        }
+
+        // ── Avanzar frame ─────────────────────────────────────────────────
+        if (frames && !frames->empty())
+        {
+            tiempoFrame += dt;
+            if (tiempoFrame >= duracion)
+            {
+                tiempoFrame  = 0.f;
+                frameActual  = (frameActual + 1) % static_cast<int>(frames->size());
+            }
+            //qDebug("aqui no esta tirando error 380");
+            itemGrafico->setPixmap(frames->at(frameActual));
+        }
+        //qDebug("aqui esta tirando error 383");
+        // qDebug()<<"robot N: ";
+        // qDebug()<<"Coordenadas P(x,y) ("<<itemGrafico->x()<<","<<itemGrafico->y()<<")";
         itemGrafico->setPos(x, y);
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  posicionLibre — comprueba si el robot cabría en (px, py) sin solapar paredes
+// ════════════════════════════════════════════════════════════════════════════
+// posicionLibre usa paredesCache como miembro
+bool RobotSeguridad::posicionLibre(float px, float py, float tam) const
+{
+    for (const Hitbox& hb : paredesCache)
+    {
+        if (px < hb.x + hb.w && px + tam > hb.x &&
+            py < hb.y + hb.h && py + tam > hb.y)
+            return false;
+    }
+    return true;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  moverHaciaConEvacion — exactamente la lógica que describiste:
+//
+//  1. ¿Puedo ir directo (diagonal)?  → ir directo
+//  2. ¿Puedo mover en X solamente?   → deslizar por X
+//  3. ¿Puedo mover en Y solamente?   → deslizar por Y
+//  4. ¿Ninguno? → probar perpendicular izquierda y derecha
+//  5. ¿Nada? → frenar (stuck detector tomará el relevo)
+// ════════════════════════════════════════════════════════════════════════════
+// moverHaciaConEvacion igual que antes pero sin el parámetro paredes
+// void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
+// {
+//     // ── PROTECCIÓN: Si el objetivo es un fantasma de la memoria, abortamos
+//     if (!std::isfinite(tx) || !std::isfinite(ty)) {
+//         Vx = 0.f; Vy = 0.f;
+//         return;
+//     }
+//     float velActual = (estado == EstadoAgente::PERSECUCION)
+//     ? velPersecucion : velPatrulla;
+//     float dx = tx - x, dy = ty - y;
+//     float dist = std::sqrt(dx*dx + dy*dy);
+//     //if (dist < 1.f) { Vx = 0.f; Vy = 0.f; return; }
+//     // ── PROTECCIÓN: Validar que la distancia sea real y suficiente
+//     if (!std::isfinite(dist) || dist < 1.f) {
+//         Vx = 0.f; Vy = 0.f;
+//         return;
+//     }
+
+//     float nx = dx / dist, ny = dy / dist;
+//     const float TAM = 32.f, SONDA = TAM * 1.5f;
+
+//     bool diagLibre = posicionLibre(x + nx*SONDA, y + ny*SONDA, TAM);
+//     bool xLibre    = posicionLibre(x + nx*SONDA, y,            TAM);
+//     bool yLibre    = posicionLibre(x,            y + ny*SONDA, TAM);
+
+//     float targetVx, targetVy;
+
+//     if (diagLibre)
+//     { targetVx = nx * velActual; targetVy = ny * velActual; }
+//     else if (xLibre && !yLibre)
+//     { targetVx = nx * velActual; targetVy = 0.f; }
+//     else if (yLibre && !xLibre)
+//     { targetVx = 0.f;            targetVy = ny * velActual; }
+//     else if (xLibre && yLibre)
+//     {
+//         if (std::abs(dx) >= std::abs(dy))
+//         { targetVx = nx * velActual; targetVy = 0.f; }
+//         else
+//         { targetVx = 0.f;            targetVy = ny * velActual; }
+//     }
+//     else
+//     {
+//         float p1x = -ny, p1y =  nx;
+//         float p2x =  ny, p2y = -nx;
+//         if (posicionLibre(x + p1x*SONDA, y + p1y*SONDA, TAM))
+//         { targetVx = p1x * velActual; targetVy = p1y * velActual; }
+//         else if (posicionLibre(x + p2x*SONDA, y + p2y*SONDA, TAM))
+//         { targetVx = p2x * velActual; targetVy = p2y * velActual; }
+//         else
+//         { Vx = 0.f; Vy = 0.f; return; }
+//     }
+
+
+//     //qDebug() << "mostrando robot antes de aplicarInercia en moverhaciaE: " << x << " y: " << y;
+//     GestorFisicas::aplicarInercia(Vx, targetVx, dt);
+//     GestorFisicas::aplicarInercia(Vy, targetVy, dt);
+//     x += Vx * dt;
+//     y += Vy * dt;
+//     //qDebug() << "mostrando robot despues de aplicarInercia MoverhaciaE: " << x << " y: " << y;
+// }
+void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
+{
+    if (!std::isfinite(tx) || !std::isfinite(ty)) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
+
+    float velActual = (estado == EstadoAgente::PERSECUCION)
+                          ? velPersecucion : velPatrulla;
+
+    float dx = tx - x, dy = ty - y;
+    float dist = std::sqrt(dx*dx + dy*dy);
+
+    if (!std::isfinite(dist) || dist < 1.f) {
+        Vx = 0.f; Vy = 0.f;
+        return;
+    }
+
+    float nx = dx / dist, ny = dy / dist;
+    const float TAM = 32.f;
+
+    // ── FIX 1: Sonda adaptativa ───────────────────────────────────────────────
+    // Si el robot está más cerca que TAM*1.5 del objetivo, la sonda se acorta
+    // al propio destino — evita detectar paredes que están DESPUÉS del waypoint.
+    const float SONDA = std::min(TAM * 1.5f, dist);
+
+    bool diagLibre = posicionLibre(x + nx*SONDA, y + ny*SONDA, TAM);
+    bool xLibre    = posicionLibre(x + nx*SONDA, y,            TAM);
+    bool yLibre    = posicionLibre(x,            y + ny*SONDA, TAM);
+
+    float targetVx, targetVy;
+
+    if (diagLibre)
+    {
+        targetVx = nx * velActual;
+        targetVy = ny * velActual;
+    }
+    // ── FIX 2: Guard de componente cero ──────────────────────────────────────
+    // Deslizar en X solo tiene sentido si hay componente horizontal real (nx ≠ 0).
+    // Si nx ≈ 0 (movimiento puramente vertical), targetVx = 0 → robot parado.
+    // En ese caso caer directo a las perpendiculares.
+    else if (xLibre && !yLibre && std::abs(nx) > 0.05f)
+    {
+        targetVx = nx * velActual;
+        targetVy = 0.f;
+    }
+    else if (yLibre && !xLibre && std::abs(ny) > 0.05f)
+    {
+        targetVx = 0.f;
+        targetVy = ny * velActual;
+    }
+    else if (xLibre && yLibre)
+    {
+        // Ambos ejes libres: preferir el de mayor delta,
+        // pero solo si el componente correspondiente es significativo
+        if (std::abs(dx) >= std::abs(dy) && std::abs(nx) > 0.05f)
+        { targetVx = nx * velActual; targetVy = 0.f; }
+        else if (std::abs(ny) > 0.05f)
+        { targetVx = 0.f; targetVy = ny * velActual; }
+        else
+        { targetVx = nx * velActual; targetVy = ny * velActual; }
+    }
+    else
+    {
+        // Camino directo bloqueado Y componente demasiado pequeño:
+        // probar perpendicular izquierda y derecha
+        float p1x = -ny, p1y =  nx;
+        float p2x =  ny, p2y = -nx;
+        if (posicionLibre(x + p1x*SONDA, y + p1y*SONDA, TAM))
+        { targetVx = p1x * velActual; targetVy = p1y * velActual; }
+        else if (posicionLibre(x + p2x*SONDA, y + p2y*SONDA, TAM))
+        { targetVx = p2x * velActual; targetVy = p2y * velActual; }
+        else
+        { Vx = 0.f; Vy = 0.f; return; }
+    }
+
+    GestorFisicas::aplicarInercia(Vx, targetVx, dt);
+    GestorFisicas::aplicarInercia(Vy, targetVy, dt);
+    x += Vx * dt;
+    y += Vy * dt;
 }
 
 // ── TICK (método completo para el nivel) ─────────────────────────────────────
@@ -356,13 +518,22 @@ void RobotSeguridad::actuar(float dt)
 //     actuar(dt);
 // }
 
-void RobotSeguridad::tick(float jx, float jy, float dt, bool jugadorOculto)
+// void RobotSeguridad::tick(float jx, float jy, float dt, bool jugadorOculto)
+// {
+//     percibir(jx, jy);
+//     razonar(jugadorOculto);
+//     actuar(dt);
+// }
+
+void RobotSeguridad::tick(float jx, float jy, float dt,
+                          bool jugadorOculto,
+                          const std::vector<Hitbox>& paredes)
 {
+    paredesCache = paredes;   // ← disponible para actuar() sin cambiar su firma
     percibir(jx, jy);
     razonar(jugadorOculto);
-    actuar(dt);
+    actuar(dt);               // ← firma original intacta, override válido
 }
-
 
 // ── APRENDIZAJE: actualizar waypoints ────────────────────────────────────────
 // Añade la última posición vista del jugador al patrón de vigilancia.
@@ -385,29 +556,5 @@ void RobotSeguridad::actualizarWaypoints()
 
 // ── MOVIMIENTO CON INERCIA ───────────────────────────────────────────────────
 // Mueve el robot hacia (tx, ty) usando MRUA en ambos ejes.
-void RobotSeguridad::moverHacia(float tx, float ty, float dt)
-{
-    float velActual = (estado == EstadoAgente::PERSECUCION)
-                      ? velPersecucion
-                      : velPatrulla;
 
-    float dx = tx - x;
-    float dy = ty - y;
-    float dist = std::sqrt(dx*dx + dy*dy);
 
-    if (dist < 1.f) { Vx = 0; Vy = 0; return; }
-
-    // Dirección normalizada
-    float nx = dx / dist;
-    float ny = dy / dist;
-
-    float targetVx = nx * velActual;
-    float targetVy = ny * velActual;
-
-    // Aplicar inercia (MRUA)
-    GestorFisicas::aplicarInercia(Vx, targetVx, dt);
-    GestorFisicas::aplicarInercia(Vy, targetVy, dt);
-
-    x += Vx * dt;
-    y += Vy * dt;
-}

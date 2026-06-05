@@ -17,6 +17,9 @@ protected:
 public:
     Enemigo();
     Enemigo(float x, float y, float vel, float r);
+    //Sobrecargas Obligatorias
+    Enemigo(const Enemigo& otro);
+    bool operator==(const Enemigo& otro) const;
 
     // ── Ciclo del agente inteligente ────────────────────────
     virtual void percibir(float jugadorX, float jugadorY) = 0;

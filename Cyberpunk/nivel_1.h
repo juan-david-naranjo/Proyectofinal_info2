@@ -2,11 +2,19 @@
 #define NIVEL_1_H
 
 #include "nivel.h"
+#include <vector>
 #include <QPixmap>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsTextItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsPixmapItem>
+
+// Sonidos
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QSoundEffect>
+#include <QUrl>
 
 // ============================================================
 //  Nivel_1 — Vista lateral, Jump-King style
@@ -30,29 +38,37 @@ public:
 
     void inicializar(Personaje* p) override;
     void actualizar(float dt)      override;
+    void limpiarEscena();
 
     // Asigna escena y view; llamar ANTES de inicializar()
     void setScene(QGraphicsScene* scene, QGraphicsView* view);
 
     // Recalcula la escala cuando la ventana cambia de tamaño
-    // (llamar desde MainWindow::resizeEvent solo si nivelActual==1)
     void aplicarEscalaView();
 
     // Restaura la view al estado neutro antes de pasar al nivel 2
     void restaurarView();
 
+    // ── Dificultad ────────────────────────────────────────────
+    void setDificultad(bool dificil);
+
+    // ── Sonidos ───────────────────────────────────────────────
+    void stopMusic();
+    void playMusic();
+
 private:
     // ── Dimensiones lógicas ───────────────────────────────────
     static constexpr float ESCENA_W     = 800.f;
-    static constexpr float ESCENA_H     = 1433.f;  // 2752*(800/1536)
+    static constexpr float ESCENA_H     = 1433.f;
 
     // ── Constantes del juego ──────────────────────────────────
     static constexpr int   TIEMPO_NIVEL = 90;
     static constexpr float LIMITE_CAIDA = ESCENA_H + 50.f;
-    static constexpr float META_Y       = 80.f;
-
-    // El jugador aparece a este offset por debajo del centro
+    static constexpr float META_Y       = 310.f;
     static constexpr float CAM_OFFSET_Y = 150.f;
+
+    // Amplitud del viento en modo difícil
+    static constexpr float VIENTO_AMPLITUD_DIFICIL = 440.f;
 
     // ── Spawn ─────────────────────────────────────────────────
     float spawnX;
@@ -61,20 +77,35 @@ private:
     // ── Tiempo ────────────────────────────────────────────────
     float timerAcumulado;
 
+    // ── Dificultad ────────────────────────────────────────────
+    bool  modoDificil;
+    float vientoAmplitud;
+
     // ── Referencias Qt ────────────────────────────────────────
     QGraphicsScene* escena;
     QGraphicsView*  vista;
 
     // ── Items gráficos de plataformas ─────────────────────────
-    QList<QGraphicsRectItem*> itemsPlataformas;
+    QPixmap spritePlataforma;
+    std::vector<QGraphicsPixmapItem*> itemsPlataformas;
 
     // ── HUD ───────────────────────────────────────────────────
-    QGraphicsRectItem* fondoHUD;
-    QGraphicsRectItem* fondoBarraTiempo;
-    QGraphicsRectItem* barraTiempo;
-    QGraphicsTextItem* hudTiempo;
-    QGraphicsTextItem* hudVidas;
-    QGraphicsTextItem* hudPuerta;
+    // Timer estilo N2: fondo + texto centrado, sin barra ni vidas
+    QGraphicsRectItem* fondoHUD;        // banda semitransparente en la cima
+    QGraphicsTextItem* hudTiempo;       // "1:30" centrado
+    QGraphicsTextItem* hudDificultad;   // "FÁCIL" / "DIFÍCIL" a la derecha
+    QGraphicsTextItem* hudPuerta;       // aviso "¡PUERTA CERRADA!"
+
+    // ── Debug ─────────────────────────────────────────────────
+    static constexpr bool DEBUG_HITBOX = true;
+    QGraphicsRectItem* debugHitboxItem;
+
+    // ── Sonidos ───────────────────────────────────────────────
+    QMediaPlayer musicaFondo;
+    QAudioOutput audioFondo;
+    QSoundEffect sonidoSalto;
+
+    bool saltandoAnterior;
 
     // ── Helpers ───────────────────────────────────────────────
     void generarPlataformas();

@@ -3,6 +3,7 @@
         <file>Sprites/Nivel1/sprites nivel 1 kael.png</file>
         <file>Sprites/Nivel1/Escenario1.png</file>
         <file>Sprites/Nivel1/Escenario1P.png</file>
+        <file>Sprites/Nivel1/spriteplataforma.png</file>
     </qresource>
     <qresource prefix="/Kael_nivel2">
         <file>Sprites/Nivel2/sprites nivel 2 kael.png</file>
@@ -10,6 +11,10 @@
         <file>Sprites/Nivel2/Sprites_kael_movimientos.png</file>
         <file>Sprites/Nivel2/Escenario_V2.png</file>
         <file>Sprites/Nivel2/murosV2.png</file>
+        <file>Sprites/Nivel2/Robot_V2.png</file>
+        <file>Sprites/Nivel2/computer_.png</file>
+        <file>Sprites/Nivel2/Zonas_ocultas.png</file>
+        <file>Sprites/Nivel2/Escenario_V2 sin marca de agua.png</file>
     </qresource>
     <qresource prefix="/Sonidos">
         <file>Sonidos/sonido_fondo.mp3</file>
@@ -17,6 +22,7 @@
         <file>Sonidos/Sonido_persecusion.mp3</file>
         <file>Sonidos/Hacking.mp3</file>
         <file>Sonidos/sonido_victoria.mp3</file>
+        <file>Sonidos/sonido_salto_V2.mp3</file>
     </qresource>
     <qresource prefix="/sonidoswav">
         <file>Sonidos/sonido_victoria.wav</file>
@@ -25,5 +31,6 @@
         <file>Sonidos/End of Line (From TRON_ LegacyScore).mp3</file>
         <file>Sonidos/clickwav.wav</file>
         <file>Sonidos/hurtwav.wav</file>
+        <file>Sonidos/persecusionwav.wav</file>
     </qresource>
 </RCC>
