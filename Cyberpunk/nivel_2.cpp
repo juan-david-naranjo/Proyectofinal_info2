@@ -998,7 +998,7 @@ void Nivel_2::limpiarEscena()
     itemsZonas.clear();
     itemsDeteccion.clear();
     itemObjetivo = nullptr;
-    debugRobotsRect.clear();     // ← agregar
+    //debugRobotsRect.clear();     // ← agregar
     itemsCorazones.clear();      // ← agregar
     itemHUDTimer       = nullptr; // ← agregar
     debugJugadorRect   = nullptr; // ← agregar (reemplaza el static)

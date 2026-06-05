@@ -83,7 +83,7 @@ void GameManager::gameTick()
     case Estado::NIVEL_1:
         nivel1->actualizar(dt);
         if (nivel1->completado)
-            mostrarNivel1Completado();                          // ← antes era irANivel2() directo
+            mostrarNivel1Completado();
         else if (nivel1->puertaCerrada && nivel1->tiempoRestante <= 0)
             mostrarPuertaCerrada();
         break;
@@ -111,10 +111,16 @@ void GameManager::irAMenu()
     // Vaciar la lista ANTES de clear() para evitar dangling pointers
     itemsOverlay.clear();
 
-    if (jugador && jugador->getItem() &&
-        jugador->getItem()->scene() == escena)
-        escena->removeItem(jugador->getItem());
+    if (estadoActual == Estado::NIVEL_1 ||
+        estadoActual == Estado::NIVEL_1_COMPLETADO ||
+        estadoActual == Estado::PUERTA_CERRADA)
+        nivel1->limpiarEscena();
+    else if (estadoActual == Estado::NIVEL_2 ||
+             estadoActual == Estado::DERROTA  ||
+             estadoActual == Estado::VICTORIA)
+        nivel2->limpiarEscena();
 
+    if (jugador) jugador->invalidarItem();
     escena->clear();
     estadoActual = Estado::MENU;
     mostrarMenu();
@@ -146,7 +152,6 @@ void GameManager::irASeleccionDificultad()
 void GameManager::irASeleccionClase()           //tipo de personalidad de kael
 {
     limpiarOverlay();
-    //escena->clear();
     escena->setBackgroundBrush(QColor(5, 10, 20));
     escena->setSceneRect(0, 0, 1250, 700);
     agregarTextoOverlay("CARGANDO PERFIL TÁCTICO", QColor(0, 255, 120), 40, -150.f, true);
@@ -175,16 +180,12 @@ void GameManager::irANivel1()
 {
     sonidoClick.play();
     detenerTodaMusica();
-
-    // escena->clear() va a destruir todos los ítems incluyendo el overlay;
-    // vaciamos la lista primero para que limpiarOverlay no intente
-    // remover punteros que ya no existen.
     itemsOverlay.clear();
 
-    if (jugador && jugador->getItem())
-        escena->removeItem(jugador->getItem());
-
+    nivel1->limpiarEscena();
+    if (jugador) jugador->invalidarItem();
     escena->clear();
+    if (jugador) jugador->recrearItem();
 
     // Aplicar dificultad al nivel 1
     nivel1->setDificultad(dificultadActual == Dificultad::DIFICIL);
@@ -204,12 +205,10 @@ void GameManager::irANivel2()
 
     itemsOverlay.clear();   // escena->clear() destruirá estos ítems
 
-    if (jugador && jugador->getItem() &&
-        jugador->getItem()->scene() == escena)
-        escena->removeItem(jugador->getItem());
-
     nivel2->limpiarEscena();
+    if (jugador) jugador->invalidarItem();
     escena->clear();
+    if (jugador) jugador->recrearItem();
     nivel2->setScene(escena);
     nivel2->inicializar(jugador);
     vista->setAlignment(Qt::AlignCenter);
@@ -244,6 +243,9 @@ void GameManager::mostrarVictoria()
 {
     timer->stop();
     detenerTodaMusica();
+    nivel2->limpiarEscena();
+    if (jugador) jugador->invalidarItem();
+    escena->clear();
     estadoActual = Estado::VICTORIA;
     mostrarPantallaVictoria();
 }
@@ -276,16 +278,26 @@ void GameManager::onReiniciar()
 {
     timer->stop();
     sonidoClick.play();
-    switch (estadoAntesDePausa) {
+    Estado ref = (estadoActual == Estado::PAUSADO)
+                     ? estadoAntesDePausa
+                     : estadoActual;
+
+    switch (ref)
+    {
     case Estado::NIVEL_1:
+    case Estado::NIVEL_1_COMPLETADO:
+    case Estado::PUERTA_CERRADA:
         irANivel1();
         break;
     case Estado::NIVEL_2:
+    case Estado::DERROTA:
+    case Estado::VICTORIA:
         nivel2->completado = false;
         nivel2->sinVidas   = false;
         irANivel2();
         break;
     default:
+        irAMenu();
         break;
     }
     timer->start(MS_POR_TICK);
@@ -320,11 +332,25 @@ void GameManager::onIrAlMenu()
     timer->stop();
     detenerTodaMusica();
 
-    itemsOverlay.clear();   // escena->clear() los destruye
+    itemsOverlay.clear();
 
-    if (jugador && jugador->getItem() &&
-        jugador->getItem()->scene() == escena)
-        escena->removeItem(jugador->getItem());
+    if (estadoActual == Estado::NIVEL_1        ||
+        estadoActual == Estado::NIVEL_1_COMPLETADO ||
+        estadoActual == Estado::PUERTA_CERRADA)
+    {
+        nivel1->limpiarEscena();
+        if (jugador) jugador->invalidarItem();
+    }
+    else if (estadoActual == Estado::NIVEL_2)
+    {
+        nivel2->limpiarEscena();
+        if (jugador) jugador->invalidarItem();
+    }
+    else if (estadoActual == Estado::DERROTA ||
+             estadoActual == Estado::VICTORIA)
+    {
+        if (jugador) jugador->invalidarItem();
+    }
 
     escena->clear();
     estadoActual = Estado::MENU;
@@ -605,8 +631,10 @@ void GameManager::mostrarGameOver()
 {
     timer->stop();
     detenerTodaMusica();
+    nivel2->limpiarEscena();
+    if (jugador) jugador->invalidarItem();
+    escena->clear();
     estadoActual = Estado::DERROTA;
-
     agregarFondoOverlay();
     agregarTextoOverlay("GAME  OVER",
                         QColor(220, 40, 40), 52, -130.f, true);
@@ -710,6 +738,7 @@ BotonMenu* GameManager::agregarBotonOverlay_Cam(const QString& texto, float offs
 // ── Nivel 1 Completado — usa helpers _Cam para cuadrar con el viewport ────
 void GameManager::mostrarPantallaNivel1Completado()
 {
+
     agregarFondoOverlay_Cam();
 
     agregarTextoOverlay_Cam("ACCESO  CONCEDIDO",

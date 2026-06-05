@@ -755,6 +755,20 @@ void Personaje::resetearPosicion(float rx, float ry)
     if (itemGrafico) itemGrafico->setPos(x,y);
 }
 
+void Personaje::invalidarItem()
+{
+    itemGrafico = nullptr;
+}
+
+void Personaje::recrearItem()
+{
+    itemGrafico = new QGraphicsPixmapItem();
+    itemGrafico->setPixmap(n1_framesIdle.empty()
+        ? [](){ QPixmap p(70,70); p.fill(Qt::red); return p; }()
+        : n1_framesIdle[0]);
+    itemGrafico->setPos(x, y);
+}
+
 
 // ── Getters ───────────────────────────────────────────────────
 int   Personaje::getVidas()        const { return vidas;        }

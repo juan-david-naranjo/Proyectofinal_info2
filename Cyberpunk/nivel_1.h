@@ -38,6 +38,7 @@ public:
 
     void inicializar(Personaje* p) override;
     void actualizar(float dt)      override;
+    void limpiarEscena();
 
     // Asigna escena y view; llamar ANTES de inicializar()
     void setScene(QGraphicsScene* scene, QGraphicsView* view);
@@ -67,7 +68,7 @@ private:
     static constexpr float CAM_OFFSET_Y = 150.f;
 
     // Amplitud del viento en modo difícil
-    static constexpr float VIENTO_AMPLITUD_DIFICIL = 240.f;
+    static constexpr float VIENTO_AMPLITUD_DIFICIL = 440.f;
 
     // ── Spawn ─────────────────────────────────────────────────
     float spawnX;

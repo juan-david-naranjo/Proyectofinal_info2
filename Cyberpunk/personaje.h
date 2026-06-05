@@ -70,6 +70,8 @@ public:
 
     void cargarSpritesNivel1();
     void cargarSpritesNivel2();
+    void invalidarItem();
+    void recrearItem();
 
     // ── Caída final (nivel 1) ─────────────────────────────────
     void activarCaidaFinal();

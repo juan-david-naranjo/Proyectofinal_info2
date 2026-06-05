@@ -97,9 +97,6 @@ public:
     void loadDestAnim();
     void addHudScene();
 
-
-
-
 private:
     //Escena Qt
     QGraphicsScene*              escena;          //Referencia a la escena actual
@@ -172,20 +169,10 @@ private:
                                   QColor fondoColor = QColor(0,0,0,0));
     void actualizarAnimDestruccion(float dt);
 
-
-
-
-
-
-    std::vector<QGraphicsRectItem*> debugRobotsRect;        //hitbox robot
-
-
     // Ítems visuales (propiedad de la escena, no los borramos)
     std::vector<QGraphicsItem*>    itemsParedes;    //< Rectángulos de las paredes
     QGraphicsPixmapItem* itemObjetivo;                 //computadora
     std::vector<QGraphicsEllipseItem*> itemsDeteccion; //< Círculos de detección por robot
-
-
     void generarLaberinto();
     void generarRobots();
     void generarRobots(int dificult);
@@ -193,11 +180,8 @@ private:
     void resolverColisiones();    ///< Jugador ↔ paredes
     void verificarDeteccion();    ///< Robot alcanza al jugador → daño + respawn
     void verificarVictoria(float dt);
-
-
     void agregarItemsEscena();    ///< Crea y añade todos los QGraphicsItem a la escena
     void actualizarCirculosDeteccion(); ///< Mueve y recolorea los círculos cada tick
-
     static QPixmap crearSpriteRobot(int w, int h); ///< Dibuja el robot con QPainter
 
 
