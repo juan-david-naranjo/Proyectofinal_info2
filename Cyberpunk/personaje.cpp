@@ -21,7 +21,6 @@ Personaje::Personaje() : EntidadJuego(0, 0)
     tiempoDesliz     = 0.f;
     boostActivo      = false;
     tiempoBoost      = 0.f;
-    factorSigilo     = 1.f;
     Sprite           = nullptr;
     itemGrafico      = nullptr;
     estadoAnim       = EstadoAnim::IDLE;
@@ -100,7 +99,6 @@ Personaje::Personaje(const Personaje& otro)
     , tiempoDesliz(otro.tiempoDesliz)
     , boostActivo(otro.boostActivo)
     , tiempoBoost(otro.tiempoBoost)
-    , factorSigilo(otro.factorSigilo)
     , Sprite(nullptr)    // no copiar puntero crudo de hoja de sprites
 // Los vectores de frames se recargan con cargarSpritesNivelX()
 {
@@ -148,8 +146,25 @@ void Personaje::saltar()
 // ============================================================
 void Personaje::activarBoost()
 {
-    boostActivo = true;
-    tiempoBoost = DURACION_BOOST;
+    //boostActivo = true;
+    //tiempoBoost = DURACION_BOOST;
+}
+
+void Personaje::usarHabilidadEspecial()
+{
+    if (cooldownHabilidad > 0.f) return; // Bloqueo si no han pasado 5 segundos
+
+    if (clase == ClaseActiva::VELOCISTA) {
+        boostActivo = true;
+        tiempoBoost = DURACION_BOOST;
+        qDebug() << "¡Boost de Velocista activado!";
+    }
+    else if (clase == ClaseActiva::ESPECTRO) {
+        tiempoSigiloActivo = DURACION_SIGILO;
+        qDebug() << "¡Camuflaje de Espectro activado! (Indetectable por 2s)";
+    }
+
+    cooldownHabilidad = COOLDOWN_MAX; // Arranca el contador de 5s para la barra
 }
 
 void Personaje::activarDesliz()
@@ -304,13 +319,21 @@ void Personaje::actualizarNivel2(float dt)
     y += Vy * dt;
 
     float velTotal = std::sqrt(Vx*Vx + Vy*Vy);
-    factorSigilo   = (velTotal < velMax * 0.4f) ? 0.5f : 1.f;
 
-    if (boostActivo)
-    {
-        //qDebug("boost activado");
+    // Reducir tiempos de habilidades
+    if (tiempoBoost > 0.f) {
         tiempoBoost -= dt;
-        if (tiempoBoost <= 0.f) { boostActivo = false; tiempoBoost = 0.f; }
+        if (tiempoBoost <= 0.f) boostActivo = false;
+    }
+
+    if (tiempoSigiloActivo > 0.f) {
+        tiempoSigiloActivo -= dt;
+    }
+
+    // Reducir el cooldown para la barra del HUD
+    if (cooldownHabilidad > 0.f) {
+        cooldownHabilidad -= dt;
+        if (cooldownHabilidad < 0.f) cooldownHabilidad = 0.f;
     }
 
 
@@ -624,6 +647,12 @@ QPixmap Personaje::eliminarFondo(const QPixmap& source, QColor colorFondo, int t
     return QPixmap::fromImage(img);
 }
 
+float Personaje::getProgresoCooldownHabilidad() const
+{
+    if (cooldownHabilidad <= 0.f) return 1.f;
+    return (COOLDOWN_MAX - cooldownHabilidad) / COOLDOWN_MAX;
+}
+
 
 // ============================================================
 //  Caída final (nivel 1)
@@ -712,6 +741,5 @@ float Personaje::getEnergia()      const { return energia;      }
 bool  Personaje::isEnSuelo()       const { return enSuelo;      }
 bool  Personaje::isBoostActivo()   const { return boostActivo;  }
 bool  Personaje::isDeslizando()    const { return deslizando;   }
-float Personaje::getFactorSigilo() const { return factorSigilo; }
 float Personaje::getYMasAlta()     const { return yMasAlta;     }
 

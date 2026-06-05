@@ -105,6 +105,7 @@ private:
     void pausar();
     void reanudar();
     void mostrarVictoria();
+    void irASeleccionClase();
 
     void mostrarGameOver();
     void mostrarPuertaCerrada();

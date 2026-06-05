@@ -82,6 +82,7 @@ public:
     //para el escenario
     void limpiarEscena();
     void setScene(QGraphicsScene* scene);
+    void setDificultad(bool dificil);       //para escoger la dificultad
     void    cargarSpriteObjetivo(const QPixmap& hoja,
                               int srcX, int srcY,
                               int srcW, int srcH);
@@ -122,7 +123,10 @@ private:
     // ── HUD ───────────────────────────────────────────────────────────────────
     QGraphicsTextItem*              itemHUDTimer = nullptr;
     std::vector<QGraphicsEllipseItem*> itemsCorazones;
-
+    QGraphicsRectItem* hudFondoBoost = nullptr;
+    QGraphicsRectItem* hudBarraBoost = nullptr;
+    const float ANCHO_MAX_BARRA = 200.f; // El tamaño horizontal de la barra
+    const float ALTO_MAX_BARRA = 50.f; // El tamaño horizontal de la barra
 
     void actualizarHUD();
 
@@ -151,6 +155,8 @@ private:
     QGraphicsRectItem* itemBarraRelleno  = nullptr;
     static constexpr float BARRA_ANCHO   = 137.f;  // igual al ancho del sprite
     static constexpr float BARRA_ALTO    = 12.f;
+    bool  modoDificil;
+
 
     // ── Animación de destrucción de la computadora ────────────────────────────
     std::vector<QPixmap> framesDestruccion;
@@ -184,9 +190,6 @@ private:
     void generarRobots();
     void generarRobots(int dificult);
     void limpiarRobots();
-    void setDifficult(int dificult);
-
-
     void resolverColisiones();    ///< Jugador ↔ paredes
     void verificarDeteccion();    ///< Robot alcanza al jugador → daño + respawn
     void verificarVictoria(float dt);

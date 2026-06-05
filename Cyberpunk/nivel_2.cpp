@@ -106,36 +106,6 @@ void Nivel_2::limpiarRobots()
     robots.clear();
 }
 
-void Nivel_2::setDifficult(int dificult)
-{
-    const int MAX_DIFICULT=90;
-    const int MED_DIFICULT=140;
-    const int EASY_DIFICULT=180;
-
-    switch (dificult) {
-
-        // 0 - facil
-        // 1 - medio
-        // 2 - dificil
-    case 0:
-        tiempoRestante = EASY_DIFICULT;
-
-        break;
-    case 1:
-        tiempoRestante=MED_DIFICULT;
-
-        break;
-    case 2:
-        tiempoRestante=MAX_DIFICULT;
-
-        break;
-    default:
-        break;
-    }
-
-
-
-}
 
 
 
@@ -150,6 +120,7 @@ void Nivel_2::inicializar(Personaje* p)
     haciendoHackeo     = false;
     tiempoHackeo       = 0.f;
     jugador = p;
+    jugador->setVidas(4);
     jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
     loadDestAnim();         //animacion de destruccion de computadora
 
@@ -198,10 +169,10 @@ void Nivel_2::generarLaberinto()
          {  451.f, 460.f,  340.f,  15.f, Plataforma::TipoMuro::HORIZONTAL },
          // Verticales
          {  292.f, 202.f,   20.f, 403.f, Plataforma::TipoMuro::VERTICAL   },
-         {  771.f, 486.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+         {  771.f, 476.f,   20.f, 120.f, Plataforma::TipoMuro::VERTICAL   },
          {  451.f, 360.f,   20.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
          {  617.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
-         {  727.f, 217.f,   15.f, 100.f, Plataforma::TipoMuro::VERTICAL   },
+         {  727.f, 217.f,   15.f, 110.f, Plataforma::TipoMuro::VERTICAL   },
          {  873.f, 217.f,   15.f, 250.f, Plataforma::TipoMuro::VERTICAL   },
          { 1034.f, 386.f,   15.f, 200.f, Plataforma::TipoMuro::VERTICAL   },
          };
@@ -438,6 +409,26 @@ void Nivel_2::actualizarHUD()
             // Vida perdida: gris oscuro
             itemsCorazones[i]->setBrush(QBrush(QColor(60, 60, 60)));
     }
+
+    if (hudBarraBoost && jugador)
+    {
+        // Obtenemos el porcentaje actual (de 0.0 a 1.0)
+        float progreso = jugador->getProgresoCooldownHabilidad();
+
+        // Modificamos el rectángulo de la barra multiplicando el ancho máximo por el progreso
+        // Mantenemos la misma posición X, Y y Alto, solo cambia el Ancho
+        hudBarraBoost->setRect(hudBarraBoost->rect().x(),
+                               hudBarraBoost->rect().y(),
+                               ANCHO_MAX_BARRA * progreso,
+                               hudBarraBoost->rect().height());
+
+        // DETALLE PRO: Cambiar de color si ya está listo para usarse
+        if (progreso >= 1.f) {
+            hudBarraBoost->setBrush(QBrush(QColor(0, 255, 180))); // Verde neón (¡Listo!)
+        } else {
+            hudBarraBoost->setBrush(QBrush(QColor(0, 130, 230))); // Azul (Cargando...)
+        }
+    }
 }
 
 
@@ -590,7 +581,7 @@ void Nivel_2::actualizar(float dt)
 
     if (!jugador) return;
 
-    bool oculto = jugadorEnSombra();
+    bool oculto = jugador->isSigiloActivo();
 
     // // ── Tick robots: centro del jugador + flag de sombra ─────────────────
 
@@ -610,6 +601,7 @@ void Nivel_2::actualizar(float dt)
         // qDebug() << "Robot N: " << i;
         //qDebug() << "mostrando robot antes de tick: " << robot->getX() << " y: " << robot->getY();
         // 1. Ejecutar el ciclo de movimiento e IA del agente
+
         robot->tick(jx, jy, dt, oculto, hbParedes);
 
         // 2. Extraer los datos iniciales tras el movimiento
@@ -750,48 +742,70 @@ void Nivel_2::verificarDeteccion()
 {
 
 
-    // ── Detectar CAMBIO de estado PATRULLAJE → PERSECUCION ────────────────
-    // Se compara el estado actual con el del tick anterior.
-    // Así el sonido suena UNA sola vez al detectar, no cada frame.
+    // ── 1. GESTIÓN DE ALERTAS Y MÚSICA ────────────────────────────────────
+    bool nuevaDeteccion = false;
+    int robotsPersiguiendo = 0; // Para saber si AL MENOS UNO te persigue
+
     for (int i = 0; i < static_cast<int>(robots.size()); i++)
     {
         EstadoAgente estadoActual = robots[i]->getEstado();
 
+        // Contamos si este robot está actualmente persiguiendo
+        if (estadoActual == EstadoAgente::PERSECUCION) {
+            robotsPersiguiendo++;
+        }
+
+        // Detectar si acaba de pasar de Patrullaje a Persecución
         if (estadosAnteriores[i] == EstadoAgente::PATRULLAJE &&
-            estadoActual          == EstadoAgente::PERSECUCION)
+            estadoActual         == EstadoAgente::PERSECUCION)
         {
-            sonidoDeteccion.play();   // ¡Robot te vio!
-            musicaFondo.stop();
+            nuevaDeteccion = true;
         }
 
         estadosAnteriores[i] = estadoActual;  // actualizar para el próximo tick
     }
 
+    // ── Control del Audio basado en los contadores ──
+    if (nuevaDeteccion) {
+        sonidoDeteccion.play();   // ¡Un robot te vio! Suena la alerta
+        musicaFondo.stop();       // Cortar música tranquila
+    }
+    // Si nadie te persigue, el juego no ha terminado (!sinVidas), y la música está detenida:
+    else if (robotsPersiguiendo == 0 && !sinVidas &&
+             musicaFondo.playbackState() != QMediaPlayer::PlayingState)
+    {
+        musicaFondo.play(); // ¡Reanudar la música de infiltración!
+    }
+
+
+    // ── 2. GESTIÓN DE DAÑO Y CAPTURA ──────────────────────────────────────
     for (RobotSeguridad* robot : robots)
     {
         if (!robot->atrapoJugador()) continue;
-        robot->resetCaptura();   // siempre consumir la señal, haya daño o no
+
+        robot->resetCaptura();   // siempre consumir la señal
 
         if (!jugador) return;
         if (tiempoInvulnerable > 0.f) continue;  // iframes activos → ignorar
 
+        // ¡Magia del Espectro!
+        if (jugador->isSigiloActivo()) {
+            // Ignora al jugador como si no lo hubiera tocado
+            continue;
+        }
+
+        // ── Recibir daño (Limpié las líneas duplicadas que tenías) ──
         jugador->recibirDanio(1);
         sonidoDanio.play();
         tiempoInvulnerable = DURACION_INVULNERABLE;
 
-
-        // ── Recibir daño ──────────────────────────────────────────────
-        sonidoDanio.play();
-        tiempoInvulnerable = DURACION_INVULNERABLE;  // activar iframes
-
+        // Comprobar Game Over
         if (jugador->getVidas() <= 0)
         {
-            qDebug()<<"Se acabo el juego";
+            qDebug() << "Se acabo el juego";
             sinVidas = true;
             sonidoHackeoLoop.stop();
-            musicaFondo.stop();
-
-
+            musicaFondo.stop(); // Apagamos la música definitivamente
             break;
         }
     }
@@ -957,19 +971,29 @@ void Nivel_2::setScene(QGraphicsScene *scene)
 void Nivel_2::limpiarEscena()
 {
     // Nullear punteros ANTES de que scena->clear() los destruya
-
-
-
-    // Nullear itemGrafico de cada plataforma — scena->clear() ya los destruyó
+    // 1. Destruir los objetos C++ de las plataformas y vaciar el vector
     for (Plataforma* plat : plataformas){
-        if(!plat) continue;
-        plat->setItemNull();  // evita double-free en limpiarPlataformas
+        if (plat != nullptr) {
+            delete plat; // ¡Esto libera la memoria de la clase Plataforma!
+        }
     }
-    // Nullear itemGrafico de cada robot
+    plataformas.clear(); // Vacía el vector para que mida 0
+
+    // 2. Destruir los objetos C++ de los robots y vaciar el vector
     for (RobotSeguridad* robot : robots){
-        if(!robot) continue;
-        robot->setItemGrafico(nullptr);
+        if (robot != nullptr) {
+            delete robot; // ¡Esto libera la memoria del objeto Robot!
+        }
     }
+    robots.clear(); // Vacía el vector
+
+    itemsZonaSprites.clear();
+    estadosZonas.clear();
+    jugadorCompletamenteOculto = false;
+    estadosAnteriores.clear(); // ¡CRÍTICO PARA EVITAR EL CRASH DE DETECCIÓN!
+    zonasOcultas.clear();      // ¡Evita que las zonas se dupliquen al reiniciar!
+
+
     itemsParedes.clear();
     itemsZonas.clear();
     itemsDeteccion.clear();
@@ -982,7 +1006,8 @@ void Nivel_2::limpiarEscena()
     itemBarraRelleno    = nullptr;
     animandoDestruccion = false;
     framesDestruccion.clear();
-
+    hudBarraBoost =nullptr;
+    hudFondoBoost =nullptr;
     itemsZonaSprites.clear();         // ← agregar
     estadosZonas.clear();             // ← agregar
     jugadorCompletamenteOculto = false; // ← agregar
@@ -990,7 +1015,10 @@ void Nivel_2::limpiarEscena()
     framesZonaApertura.clear();       // ← agregar (se recargan en agregarItemsEscena)
 }
 
-
+void Nivel_2::setDificultad(bool dificil)
+{
+    modoDificil    = dificil;
+}
 
 void Nivel_2::cargarSpritesDestruccion(const QPixmap& hoja,
                                        int ox, int oy,
@@ -1149,7 +1177,7 @@ void Nivel_2::addWallScene()
         }
         else if (plat->tipoMuro == Plataforma::TipoMuro::HORIZONTAL)
         {
-            // ← aquí colocas tus coordenadas del sprite horizontal
+
             plat->cargarSprite(hojaMuros, 701, 127, 231, 108);
 
             if (plat->getItem()) {
@@ -1159,7 +1187,7 @@ void Nivel_2::addWallScene()
         }
         else if (plat->tipoMuro == Plataforma::TipoMuro::VERTICAL)
         {
-            // ← aquí colocas tus coordenadas del sprite vertical
+
             plat->cargarSprite(hojaMuros, 965, 127, 138, 217);
 
             if (plat->getItem()) {
@@ -1336,7 +1364,7 @@ void Nivel_2::addHudScene()
     // ── HUD: Corazones arriba a la izquierda ──────────────────────────────────
     itemsCorazones.clear();
 
-    int vidasPorNivel=4;
+    int vidasPorNivel=jugador->getVidas();
     for (int i = 0; i < vidasPorNivel; i++)
     {
         QGraphicsEllipseItem* corazon = new QGraphicsEllipseItem(0, 0, 22, 22);
@@ -1358,6 +1386,23 @@ void Nivel_2::addHudScene()
         itemsZonas.push_back(item);        // para cleanup en limpiarEscena
         itemsZonaSprites.push_back(item);
     }
+
+    float posX = 1094.f;  // Ajusta la posición en tu pantalla
+    float posY = 750.f;  // Abajo del timer/corazones
+
+    // 1. Rectángulo de Fondo (Gris estático)
+    hudFondoBoost = new QGraphicsRectItem(posX, posY, ANCHO_MAX_BARRA, ALTO_MAX_BARRA);
+    hudFondoBoost->setBrush(QBrush(QColor(40, 45, 50)));
+    hudFondoBoost->setPen(Qt::NoPen);
+    hudFondoBoost->setZValue(20.0); // Asegurar que esté al frente
+    escena->addItem(hudFondoBoost);
+
+    // 2. Rectángulo de Frente (Se va a estirar)
+    hudBarraBoost = new QGraphicsRectItem(posX, posY, 0.f, ALTO_MAX_BARRA); // Empieza en ancho 0
+    hudBarraBoost->setBrush(QBrush(QColor(0, 150, 255))); // Azul Boost
+    hudBarraBoost->setPen(Qt::NoPen);
+    hudBarraBoost->setZValue(21.0);
+    escena->addItem(hudBarraBoost);
 
 
 
