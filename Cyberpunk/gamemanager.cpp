@@ -149,11 +149,33 @@ void GameManager::irASeleccionDificultad()
     mostrarPantallaSeleccionDificultad();
 }
 
-void GameManager::irASeleccionClase()           //tipo de personalidad de kael
+void GameManager::irASeleccionClase()
 {
-    limpiarOverlay();
+    sonidoClick.play(); // Opcional, pero da buen feedback al hacer clic en "Continuar"
+
+    // ── 1. LA LIMPIEZA QUE FALTABA ──
+    itemsOverlay.clear(); // Vaciamos la lista para evitar dangling pointers
+
+    // Limpiamos los restos lógicos del Nivel 1 (si venimos de ahí)
+    if (estadoActual == Estado::NIVEL_1_COMPLETADO || estadoActual == Estado::NIVEL_1) {
+        nivel1->limpiarEscena();
+        if (jugador) jugador->invalidarItem();
+    }
+
+    escena->clear();
+
+    // Actualizamos el estado para no causar bugs con el teclado
+    estadoActual = Estado::SELECCION_CLASE;
+
+    // ── 2. PREPARAR LA CÁMARA Y EL FONDO ──
     escena->setBackgroundBrush(QColor(5, 10, 20));
     escena->setSceneRect(0, 0, 1250, 700);
+
+    // Reseteamos la cámara por si el Nivel 1 la dejó movida o con zoom
+    vista->resetTransform();
+    vista->setAlignment(Qt::AlignCenter);
+
+    // ── 3. DIBUJAR LA INTERFAZ ──
     agregarTextoOverlay("CARGANDO PERFIL TÁCTICO", QColor(0, 255, 120), 40, -150.f, true);
     agregarTextoOverlay("Selecciona la especialidad del traje de Kael", Qt::white, 16, -90.f);
 
@@ -175,6 +197,7 @@ void GameManager::irASeleccionClase()           //tipo de personalidad de kael
         irANivel2(); // ¡Ahora sí vamos al nivel!
     });
 }
+
 
 void GameManager::irANivel1()
 {
@@ -334,20 +357,26 @@ void GameManager::onIrAlMenu()
 
     itemsOverlay.clear();
 
-    if (estadoActual == Estado::NIVEL_1        ||
-        estadoActual == Estado::NIVEL_1_COMPLETADO ||
-        estadoActual == Estado::PUERTA_CERRADA)
+    // ── ¡LA CORRECCIÓN MÁGICA! ──
+    // Necesitamos saber de qué nivel venimos si estamos en pausa
+    Estado ref = (estadoActual == Estado::PAUSADO)
+                     ? estadoAntesDePausa
+                     : estadoActual;
+
+    if (ref == Estado::NIVEL_1        ||
+        ref == Estado::NIVEL_1_COMPLETADO ||
+        ref == Estado::PUERTA_CERRADA)
     {
         nivel1->limpiarEscena();
         if (jugador) jugador->invalidarItem();
     }
-    else if (estadoActual == Estado::NIVEL_2)
+    else if (ref == Estado::NIVEL_2)
     {
-        nivel2->limpiarEscena();
+        nivel2->limpiarEscena(); // ¡AHORA SÍ SE LIMPIA EL NIVEL 2!
         if (jugador) jugador->invalidarItem();
     }
-    else if (estadoActual == Estado::DERROTA ||
-             estadoActual == Estado::VICTORIA)
+    else if (ref == Estado::DERROTA ||
+             ref == Estado::VICTORIA)
     {
         if (jugador) jugador->invalidarItem();
     }
@@ -374,6 +403,7 @@ void GameManager::onSeleccionarDificil()
     irANivel1();
     timer->start(MS_POR_TICK);
 }
+
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Entrada de teclado
@@ -442,7 +472,6 @@ void GameManager::keyPressed(QKeyEvent* event)
         case Qt::Key_W: case Qt::Key_Up:    jugador->keyPressed(2);        break;
         case Qt::Key_S: case Qt::Key_Down:  jugador->keyPressed(3);        break;
         case Qt::Key_Space:                 jugador->usarHabilidadEspecial(); break;
-        // case Qt::Key_Space:                 jugador->activarBoost();        break;
         case Qt::Key_Shift:                 jugador->activarDeslizNivel2(); break;
         default: break;
         }

@@ -40,7 +40,8 @@ public:
         PAUSADO,
         VICTORIA,
         DERROTA,
-        PUERTA_CERRADA          // tiempo agotado en nivel 1
+        PUERTA_CERRADA,          // tiempo agotado en nivel 1
+        SELECCION_CLASE         // para proteger la entrada del teclado
     };
     bool operator==(const GameManager& otro) const; // -> Sobrecarga Obligatoria
 
@@ -106,7 +107,6 @@ private:
     void pausar();
     void reanudar();
     void mostrarVictoria();
-
     void mostrarGameOver();
     void mostrarPuertaCerrada();
     void mostrarNivel1Completado();

@@ -147,6 +147,7 @@ void Personaje::saltar()
 void Personaje::activarBoost()
 {
 
+
     // if (cooldownBoost > 0.f) {
     //     qDebug() << "Boost en cooldown. Faltan:" << cooldownBoost << "segundos.";
     //     return;
@@ -156,6 +157,7 @@ void Personaje::activarBoost()
 
     // cooldownBoost = COOLDOWN_BOOST_MAX;
     // qDebug() << "¡BOOST ACTIVADO! Iniciando cooldown de "<<COOLDOWN_BOOST_MAX<<"s.";
+
 }
 
 void Personaje::usarHabilidadEspecial()
@@ -672,6 +674,7 @@ QPixmap Personaje::eliminarFondo(const QPixmap& source, QColor colorFondo, int t
     return QPixmap::fromImage(img);
 }
 
+
 float Personaje::getProgresoCooldownBoost()
 {
     // // Si el cooldown es 0, la barra está 100% llena (Lista para usar)
@@ -683,11 +686,13 @@ float Personaje::getProgresoCooldownBoost()
     // // Retorna un valor entre 0.0 y 1.0
     // return tiempoTranscurrido / COOLDOWN_BOOST_MAX;
 }
+
 float Personaje::getProgresoCooldownHabilidad() const
 {
     if (cooldownHabilidad <= 0.f) return 1.f;
     return (COOLDOWN_MAX - cooldownHabilidad) / COOLDOWN_MAX;
 }
+
 
 // ============================================================
 //  Caída final (nivel 1)

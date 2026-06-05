@@ -26,6 +26,7 @@
 class Personaje : public EntidadJuego
 {
 public:
+
     enum class ClaseActiva {
         VELOCISTA,
         ESPECTRO
@@ -42,8 +43,6 @@ public:
 
     // Para que Nivel_2 sepa si Kael es invisible
     bool isSigiloActivo() const { return tiempoSigiloActivo > 0.f; }
-
-
 
     Personaje();
     explicit Personaje(float x, float y);
@@ -98,7 +97,9 @@ public:
     void setVidas(int cantidad);//setter para nivel_2
     float getHitboxOffsetX() const { return hitboxOffsetX; }
     float getHitboxOffsetY() const { return hitboxOffsetY; }
+
     float getProgresoCooldownBoost();       //helper para el HUD
+
 
 
     // ── Daño / reset ──────────────────────────────────────────
