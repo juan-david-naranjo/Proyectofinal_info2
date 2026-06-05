@@ -47,9 +47,11 @@ void EntidadJuego::setVelocidad(float vx, float vy) { Vx = vx; Vy = vy; }
 bool EntidadJuego::estaActiva() const { return activa; }
 void EntidadJuego::desactivar()       { activa = false; }
 
-EntidadJuego::~EntidadJuego(){if (itemGrafico && !itemGrafico->scene())
-        delete itemGrafico;}
-
+EntidadJuego::~EntidadJuego()
+{
+    if (itemGrafico && !itemGrafico->scene())
+        delete itemGrafico;
+}
 
 
 

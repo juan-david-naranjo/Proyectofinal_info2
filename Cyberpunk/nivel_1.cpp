@@ -31,16 +31,16 @@ Nivel_1::Nivel_1()
 
     musicaFondo.setAudioOutput(&audioFondo);
     musicaFondo.setSource(QUrl("qrc:/sonidoswav/Sonidos/End of Line (From TRON_ LegacyScore).mp3"));
-    audioFondo.setVolume(0.4f);
+    audioFondo.setVolume(0.2f);
     musicaFondo.setLoops(QMediaPlayer::Infinite);
 
-    sonidoSalto.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_salto_V2.mp3"));
+    sonidoSalto.setSource(QUrl("qrc:/Sonidos/Sonidos/sonido_salto_V2.mp3"));
     sonidoSalto.setVolume(0.7f);
 }
 
 Nivel_1::~Nivel_1()
 {
-    musicaFondo.stop();
+    limpiarEscena();   // limpia ítems Qt antes de liberar el objeto
     delete Escenario;
 }
 
@@ -129,6 +129,7 @@ void Nivel_1::inicializar(Personaje* p)
     timerAcumulado   = 0.f;
     tiempoAcumulado  = 0.f;
     saltandoAnterior = false;
+    jugador->setHitboxOffset(10.f,2.f,40.f,60.f);
 
     generarPlataformas();
 
@@ -461,4 +462,17 @@ void Nivel_1::verificarVictoria()
     if (!jugador || puertaCerrada) return;
     if (jugador->isEnSuelo() && jugador->getY() <= META_Y)
         completado = true;
+}
+
+void Nivel_1::limpiarEscena()
+{
+    limpiarItemsPlataformas();
+
+    fondoHUD      = nullptr;
+    hudTiempo     = nullptr;
+    hudDificultad = nullptr;
+    hudPuerta     = nullptr;
+    debugHitboxItem = nullptr;
+
+    musicaFondo.stop();
 }
