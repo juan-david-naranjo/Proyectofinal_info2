@@ -213,7 +213,7 @@ void Nivel_2::generarRobots()
 
     // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
     std::vector<Punto2D> wp1 = {
-        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{500.f,96.f}
+        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{800.f,96.f}
     };
 
     //{196.f, 96.f}, {956.f, 96.f},
@@ -649,8 +649,8 @@ void Nivel_2::actualizar(float dt)
     if (modoDificil && filtroOscuridad && jugador)
     {
         // 1. Obtener el centro exacto del jugador
-        float jx = jugador->getX() + jugador->getAncho() * 0.5f;
-        float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
+        float jx = jugador->getX() + jugador->getAncho() * 0.3f;
+        float jy = jugador->getY() + jugador->getAlto()  * 0.3f;
 
         // 2. Definir el radio de visión (cuánto puede ver a su alrededor en píxeles)
         float radioVision = 180.f; // Puedes jugar con este número para tunear la dificultad
