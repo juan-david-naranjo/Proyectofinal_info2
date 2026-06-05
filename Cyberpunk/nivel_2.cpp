@@ -366,6 +366,18 @@ void Nivel_2::agregarItemsEscena()
         jugador->getItem()->setZValue(4.0);
         escena->addItem(jugador->getItem());
     }
+    // ── SI ES MODO DIFÍCIL, CREAMOS EL FILTRO DE OSCURIDAD ──
+    if (modoDificil)
+    {
+        // El rectángulo debe medir lo mismo que tu mapa (ej. 2000x2000 o lo que mida tu laberinto)
+        filtroOscuridad = new QGraphicsRectItem(0, 0, 1320,870); // Ajusta al tamaño real de tu mapa si es más grande
+
+        // Un ZValue alto asegura que tape el mapa y los robots, pero ojo: el HUD debe tener un ZValue aún mayor (ej. 200)
+        filtroOscuridad->setZValue(10);
+
+        filtroOscuridad->setPen(Qt::NoPen); // Quitamos las líneas de contorno
+        escena->addItem(filtroOscuridad);
+    }
     addWallScene();
     addObjetivoScene();
     addRobotScene();
@@ -717,6 +729,32 @@ void Nivel_2::actualizar(float dt)
         qDebug()<<"perdiste por tiempo";
     }
 
+    // ── ACTUALIZAR LA LINTERNA / NIEBLA DE GUERRA ──
+    if (modoDificil && filtroOscuridad && jugador)
+    {
+        // 1. Obtener el centro exacto del jugador
+        float jx = jugador->getX() + jugador->getAncho() * 0.5f;
+        float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
+
+        // 2. Definir el radio de visión (cuánto puede ver a su alrededor en píxeles)
+        float radioVision = 180.f; // Puedes jugar con este número para tunear la dificultad
+
+        // 3. Crear el gradiente radial centrado en el jugador
+        QRadialGradient gradiente(jx, jy, radioVision);
+
+        // En el centro exacto (0.0), es completamente transparente (Alfa = 0)
+        gradiente.setColorAt(0.0, QColor(0, 0, 0, 0));
+
+        // A partir del 60% del camino (0.6), empieza a difuminarse suavemente
+        gradiente.setColorAt(0.6, QColor(5, 10, 20, 100));
+
+        // Al llegar al límite del radio (1.0), es oscuridad absoluta (puedes usar el mismo color de tu fondo)
+        gradiente.setColorAt(1.0, QColor(5, 10, 20, 255));
+
+        // 4. Aplicar el gradiente al filtro
+        filtroOscuridad->setBrush(QBrush(gradiente));
+    }
+
 
     // ── Comprobar condiciones de fin ──────────────────────────────────────
     verificarDeteccion();
@@ -1013,6 +1051,12 @@ void Nivel_2::limpiarEscena()
     jugadorCompletamenteOculto = false; // ← agregar
     zonaActivaIdx = -1;               // ← agregar
     framesZonaApertura.clear();       // ← agregar (se recargan en agregarItemsEscena)
+    sonidoHackeoLoop.stop(); // Corta el bucle del hackeo si se quedó sonando
+    sonidoDeteccion.stop();  // Corta el sonido de alerta de los robots
+    sonidoDanio.stop();       // Corta el sonido de recibir daño
+    sonidoVictoria.stop();   // Corta el sonido de victoria
+    musicaFondo.stop();      // Asegura que la música de fondo se detenga
+    filtroOscuridad = nullptr; // El puntero se invalida de forma segura
 }
 
 void Nivel_2::setDificultad(bool dificil)
@@ -1358,7 +1402,7 @@ void Nivel_2::addHudScene()
     // Centrar horizontalmente
     float timerW = itemHUDTimer->boundingRect().width();
     itemHUDTimer->setPos(escena->width() * 0.5f - timerW * 0.5f, 12.f);
-    itemHUDTimer->setZValue(20.0);
+    itemHUDTimer->setZValue(200.0);
     escena->addItem(itemHUDTimer);
 
     // ── HUD: Corazones arriba a la izquierda ──────────────────────────────────
@@ -1371,7 +1415,7 @@ void Nivel_2::addHudScene()
         corazon->setBrush(QBrush(QColor(220, 40, 40)));    // rojo = vida activa
         corazon->setPen(QPen(QColor(255, 100, 100), 1));
         corazon->setPos(14.f + i * 30.f, 14.f);
-        corazon->setZValue(20.0);
+        corazon->setZValue(200.0);
         escena->addItem(corazon);
         itemsCorazones.push_back(corazon);
     }
@@ -1394,14 +1438,14 @@ void Nivel_2::addHudScene()
     hudFondoBoost = new QGraphicsRectItem(posX, posY, ANCHO_MAX_BARRA, ALTO_MAX_BARRA);
     hudFondoBoost->setBrush(QBrush(QColor(40, 45, 50)));
     hudFondoBoost->setPen(Qt::NoPen);
-    hudFondoBoost->setZValue(20.0); // Asegurar que esté al frente
+    hudFondoBoost->setZValue(200.0); // Asegurar que esté al frente
     escena->addItem(hudFondoBoost);
 
     // 2. Rectángulo de Frente (Se va a estirar)
     hudBarraBoost = new QGraphicsRectItem(posX, posY, 0.f, ALTO_MAX_BARRA); // Empieza en ancho 0
     hudBarraBoost->setBrush(QBrush(QColor(0, 150, 255))); // Azul Boost
     hudBarraBoost->setPen(Qt::NoPen);
-    hudBarraBoost->setZValue(21.0);
+    hudBarraBoost->setZValue(201.0);
     escena->addItem(hudBarraBoost);
 
 
