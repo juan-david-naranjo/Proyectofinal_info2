@@ -130,7 +130,7 @@ void Nivel_1::inicializar(Personaje* p)
     tiempoAcumulado  = 0.f;
     saltandoAnterior = false;
 
-    jugador->setHitboxOffset(10.f,2.f,40.f,60.f);
+    jugador->setHitboxOffset(2.f,2.f,30.f,60.f);
 
 
     generarPlataformas();
