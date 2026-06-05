@@ -26,6 +26,25 @@
 class Personaje : public EntidadJuego
 {
 public:
+    enum class ClaseActiva {
+        VELOCISTA,
+        ESPECTRO
+    };
+
+
+    void setClase(ClaseActiva nuevaClase) { clase = nuevaClase; }
+
+    // Cambiamos activarBoost por una función general
+    void usarHabilidadEspecial();
+
+    // Para el HUD (le cambiamos el nombre para que sirva para ambos)
+    float getProgresoCooldownHabilidad() const;
+
+    // Para que Nivel_2 sepa si Kael es invisible
+    bool isSigiloActivo() const { return tiempoSigiloActivo > 0.f; }
+
+
+
     Personaje();
     explicit Personaje(float x, float y);
     ~Personaje() override;
@@ -66,7 +85,6 @@ public:
     bool  isEnSuelo()       const;
     bool  isBoostActivo()   const;
     bool  isDeslizando()    const;
-    float getFactorSigilo() const;
     float getYMasAlta()     const;
     float getAncho()        const { return ANCHO; }
     float getAlto()         const { return ALTO;  }
@@ -78,6 +96,7 @@ public:
     void setVidas(int cantidad);//setter para nivel_2
     float getHitboxOffsetX() const { return hitboxOffsetX; }
     float getHitboxOffsetY() const { return hitboxOffsetY; }
+    float getProgresoCooldownBoost();       //helper para el HUD
 
 
     // ── Daño / reset ──────────────────────────────────────────
@@ -141,8 +160,8 @@ private:
 
     // ── Estado general ────────────────────────────────────────
     int   vidas;
-    float energia;
     float velMax;
+    float energia;          //para el boost
     bool  enSuelo;
     bool  keys[4];       // 0=Izq 1=Der 2=Up 3=Down
     QPixmap* Sprite;
@@ -164,13 +183,20 @@ private:
     static constexpr float DURACION_DESLIZ_MAX = 0.8f;
 
     // ── Boost ─────────────────────────────────────────────────
-    bool  boostActivo;
-    float tiempoBoost;
-    static constexpr float DURACION_BOOST      = 3.f;
+    bool  boostActivo;          //bandera
+    float tiempoBoost;          //temporizador
+    float cooldownBoost=0.f;
     static constexpr float MULTIPLICADOR_BOOST = 2.0f;
 
-    // ── Sigilo (nivel 2) ──────────────────────────────────────
-    float factorSigilo;
+    ClaseActiva clase = ClaseActiva::VELOCISTA; // Por defecto
+
+    // ── Habilidad Especial (Reemplaza las variables del boost) ──
+    float cooldownHabilidad = 0.f;
+    static constexpr float COOLDOWN_MAX = 5.f;
+
+    static constexpr float DURACION_BOOST = 3.f;
+    float tiempoSigiloActivo = 0.f;
+    static constexpr float DURACION_SIGILO = 2.f;
 
     // ── tickAnimacion ─────────────────────────────────────────
     void tickAnimacion(float dt, std::vector<QPixmap>& frames,

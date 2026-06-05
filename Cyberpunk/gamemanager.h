@@ -100,6 +100,7 @@ private:
     // ── Transiciones ──────────────────────────────────────────
     void irAMenu();
     void irASeleccionDificultad();
+    void irASeleccionClase();
     void irANivel1();
     void irANivel2();
     void pausar();

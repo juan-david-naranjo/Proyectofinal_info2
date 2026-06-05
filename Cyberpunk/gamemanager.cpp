@@ -143,6 +143,34 @@ void GameManager::irASeleccionDificultad()
     mostrarPantallaSeleccionDificultad();
 }
 
+void GameManager::irASeleccionClase()           //tipo de personalidad de kael
+{
+    limpiarOverlay();
+    //escena->clear();
+    escena->setBackgroundBrush(QColor(5, 10, 20));
+    escena->setSceneRect(0, 0, 1250, 700);
+    agregarTextoOverlay("CARGANDO PERFIL TÁCTICO", QColor(0, 255, 120), 40, -150.f, true);
+    agregarTextoOverlay("Selecciona la especialidad del traje de Kael", Qt::white, 16, -90.f);
+
+    BotonMenu* btnVelocista = agregarBotonOverlay("Clase: VELOCISTA", -20.f);
+    agregarTextoOverlay("Habilidad: Dash de velocidad extrema (3s).", QColor(150,150,150), 12, 15.f);
+
+    BotonMenu* btnEspectro = agregarBotonOverlay("Clase: ESPECTRO", 70.f);
+    agregarTextoOverlay("Habilidad: Camuflaje óptico indetectable (2s).", QColor(150,150,150), 12, 105.f);
+
+    connect(btnVelocista, &BotonMenu::clicked, this, [this](){
+        sonidoClick.play();
+        jugador->setClase(Personaje::ClaseActiva::VELOCISTA);
+        irANivel2(); // ¡Ahora sí vamos al nivel!
+    });
+
+    connect(btnEspectro, &BotonMenu::clicked, this, [this](){
+        sonidoClick.play();
+        jugador->setClase(Personaje::ClaseActiva::ESPECTRO);
+        irANivel2(); // ¡Ahora sí vamos al nivel!
+    });
+}
+
 void GameManager::irANivel1()
 {
     sonidoClick.play();
@@ -387,7 +415,8 @@ void GameManager::keyPressed(QKeyEvent* event)
         case Qt::Key_D: case Qt::Key_Right: jugador->keyPressed(1);        break;
         case Qt::Key_W: case Qt::Key_Up:    jugador->keyPressed(2);        break;
         case Qt::Key_S: case Qt::Key_Down:  jugador->keyPressed(3);        break;
-        case Qt::Key_Space:                 jugador->activarBoost();        break;
+        case Qt::Key_Space:                 jugador->usarHabilidadEspecial(); break;
+        // case Qt::Key_Space:                 jugador->activarBoost();        break;
         case Qt::Key_Shift:                 jugador->activarDeslizNivel2(); break;
         default: break;
         }
@@ -552,6 +581,10 @@ void GameManager::mostrarPantallaPausa()
 // ── Victoria ──────────────────────────────────────────────────────────────
 void GameManager::mostrarPantallaVictoria()
 {
+    nivel2->limpiarEscena();
+    nivel2->completado=false;
+
+
     agregarFondoOverlay();
     agregarTextoOverlay("HACKEO COMPLETADO",
                         QColor(0, 255, 120), 42, -130.f, true);
@@ -686,7 +719,7 @@ void GameManager::mostrarPantallaNivel1Completado()
 
     BotonMenu* btnContinuar = agregarBotonOverlay_Cam("►  CONTINUAR MISIÓN", 10.f);
     connect(btnContinuar, &BotonMenu::clicked,
-            this, &GameManager::onIrANivel2, Qt::QueuedConnection);
+            this, &GameManager::irASeleccionClase, Qt::QueuedConnection);
 
     BotonMenu* btnReintentar = agregarBotonOverlay_Cam("↺  REINTENTAR NIVEL 1", 80.f);
     connect(btnReintentar, &BotonMenu::clicked,
