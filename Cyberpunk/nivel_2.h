@@ -93,7 +93,6 @@ private:
     // Inicialización y Generación
     void generarLaberinto();
     void generarRobots();
-    void generarRobots(int dificult);
     void limpiarRobots();
     void agregarItemsEscena();
 

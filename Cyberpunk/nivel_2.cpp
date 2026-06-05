@@ -115,7 +115,9 @@ void Nivel_2::inicializar(Personaje* p)
     haciendoHackeo     = false;
     tiempoHackeo       = 0.f;
     jugador = p;
-    jugador->setVidas(4);
+    sinVidas           = false;
+    completado         = false;
+    jugador->setVidas(2);
     jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
     loadDestAnim();         //animacion de destruccion de computadora
 
@@ -180,103 +182,31 @@ void Nivel_2::generarLaberinto()
 }
 
 // ── Generar robots ────────────────────────────────────────────────────────────
+
+
 void Nivel_2::generarRobots()
 {
     limpiarRobots();
-
-    // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
-    std::vector<Punto2D> wp1 = {
-        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{500.f,96.f}
-    };
-
-    //{196.f, 96.f}, {956.f, 96.f},
-    robots.push_back(new RobotSeguridad(
-        200.f, 98.f,
-        120.f,  // radioDeteccion
-        160.f,  // radioDesenganche
-        80.f,   // velPatrulla
-        160.f,  // velPersecucion
-        wp1
-        ));
-
-    // ── Robot 2: patrulla el sector central ──────────────────────────────
-    std::vector<Punto2D> wp2 = {
-        {1253.f, 715.f}, {184.f, 715.f},
-        {700.f, 715.f}, {700.f, 512.f},
-        {700.f,715.f}
-    };
-    robots.push_back(new RobotSeguridad(
-        1253.f, 700.f,
-        100.f,
-        140.f,
-        90.f,
-        180.f,
-        wp2
-        ));
-
-    // ── Robot 3: guarda la computadora (mayor radio, más rápido) ─────────
-    std::vector<Punto2D> wp3 = {
-        {676.f, 250.f}, {676.f, 380.f},         //up-down
-
-        {566.f,380.f},        //abajo-izquierda
-
-        {566.f, 250.f},      //ahora-sube
-
-        {366.f,250.f},
-
-        {566.f,250.f},
-
-        {566.f,380.f},
-
-        {800.f,380.f},
-
-        {800.f,480.f},
-
-        {800.f,380.f},
-
-        {676.f,380.f}
-
-    };
-    robots.push_back(new RobotSeguridad(
-        676.f, 250.f,
-        50.f,
-        200.f,
-        70.f,
-        210.f,
-        wp3
-        ));
-}
-
-
-void Nivel_2::generarRobots(int dificult)
-{
-    limpiarRobots();
+    float factorScala=0.6;
     float RADIO_DETECCION;
     float RADIO_DESENGANCHE;
     float VELPATRULLA;
     float VELPERSECUSION;
-    switch (dificult) {
-    case 0: //easy
-        RADIO_DETECCION   = 100.f;
+    switch (modoDificil) {
+    case false: //easy
+        RADIO_DETECCION   = 120.f;
         RADIO_DESENGANCHE = 110.f;
         VELPATRULLA = 80.f;
         VELPERSECUSION = 100.f;
 
         break;
-    case 1: //medium
+    case true: //medium
 
-        RADIO_DETECCION   = 120.f;
-        RADIO_DESENGANCHE = 160.f;
-        VELPATRULLA = 80.f;
-        VELPERSECUSION = 120.f;
-        break;
-    case 2: //hard
-        RADIO_DETECCION   = 120.f;
-        RADIO_DESENGANCHE = 160.f;
+        RADIO_DETECCION   = 100.f;
+        RADIO_DESENGANCHE = 90.f;
         VELPATRULLA = 100.f;
-        VELPERSECUSION = 160.f;
+        VELPERSECUSION = 110.f;
         break;
-
     default:
         break;
     }
@@ -336,8 +266,8 @@ void Nivel_2::generarRobots(int dificult)
     };
     robots.push_back(new RobotSeguridad(
         676.f, 250.f,
-        RADIO_DETECCION,
-        RADIO_DESENGANCHE,
+        RADIO_DETECCION*factorScala,
+        RADIO_DESENGANCHE*factorScala,
         VELPATRULLA,
         VELPERSECUSION,
         wp3
