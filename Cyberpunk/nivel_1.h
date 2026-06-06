@@ -34,6 +34,8 @@ public:
     bool     puertaCerrada;
 
     Nivel_1();
+    Nivel_1(const Nivel_1& otro);           // Regla de los Tres: copia profunda
+    Nivel_1& operator=(const Nivel_1& otro); // Regla de los Tres: asignación profunda
     ~Nivel_1() override;
 
     void inicializar(Personaje* p) override;
@@ -97,7 +99,7 @@ private:
     QGraphicsTextItem* hudPuerta;       // aviso "¡PUERTA CERRADA!"
 
     // ── Debug ─────────────────────────────────────────────────
-    static constexpr bool DEBUG_HITBOX = true;
+    static constexpr bool DEBUG_HITBOX = false;
     QGraphicsRectItem* debugHitboxItem;
 
     // ── Sonidos ───────────────────────────────────────────────

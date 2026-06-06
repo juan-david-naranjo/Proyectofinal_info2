@@ -22,14 +22,14 @@ Nivel_2::Nivel_2()
     sonidoDeteccion.setSource(QUrl("qrc:/sonidoswav/Sonidos/persecusionwav.wav"));
     sonidoDeteccion.setVolume(0.9f);
     sonidoDanio.setSource(QUrl("qrc:/sonidoswav/Sonidos/hurtwav.wav"));
-    sonidoDanio.setVolume(1.0f);
+    sonidoDanio.setVolume(0.8f);
 
     sonidoHackeoLoop.setSource(QUrl("qrc:/sonidoswav/Sonidos/Hacking.wav"));
     sonidoHackeoLoop.setLoopCount(QSoundEffect::Infinite);  // loop mientras hackeas
-    sonidoHackeoLoop.setVolume(0.5f);
+    sonidoHackeoLoop.setVolume(0.2f);
 
     sonidoVictoria.setSource(QUrl("qrc:/sonidoswav/Sonidos/sonido_victoria.wav"));
-    sonidoVictoria.setVolume(0.4f);
+    sonidoVictoria.setVolume(0.3f);
     musicaFondo.setAudioOutput(&audioFondo);
     musicaFondo.setSource(QUrl("qrc:/sonidoswav/Sonidos/End of Line (From TRON_ LegacyScore).mp3"));
     audioFondo.setVolume(0.35f);       // suave para no tapar los efectos
@@ -61,7 +61,9 @@ Nivel_2::Nivel_2(const Nivel_2& otro)
     , jugadorCompletamenteOculto(otro.jugadorCompletamenteOculto)
     , sinVidas(otro.sinVidas)
     , estadosAnteriores(otro.estadosAnteriores)
-    , Escenario(otro.Escenario)                       // QPixmap copy-on-write
+    , Escenario(otro.Escenario                        // deep copy del QPixmap del fondo
+                ? new QPixmap(*otro.Escenario)
+                : nullptr)
     // Todos los punteros a ítems Qt quedan a nullptr
     , itemObjetivo(nullptr)
     , itemBarraFondo(nullptr)
@@ -72,6 +74,65 @@ Nivel_2::Nivel_2(const Nivel_2& otro)
     // Copia profunda de robots
     for (RobotSeguridad* r : otro.robots)
         robots.push_back(new RobotSeguridad(*r));
+}
+
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Libera robots y Escenario propios antes de copiar los del otro.
+//  Los ítems Qt (escena, HUD) no se copian; la copia debe llamar
+//  a setScene() + inicializar() para reconstruirlos.
+// ============================================================
+Nivel_2& Nivel_2::operator=(const Nivel_2& otro)
+{
+    if (this == &otro) return *this;
+
+    // 1. Liberar recursos dinámicos propios
+    musicaFondo.stop();
+    sonidoHackeoLoop.stop();
+    limpiarRobots();
+    delete Escenario;
+
+    // 2. Copiar parte base (plataformas incluidas)
+    Nivel::operator=(otro);
+
+    // 3. Deep copy del recurso dinámico propio
+    Escenario           = otro.Escenario ? new QPixmap(*otro.Escenario) : nullptr;
+
+    // 4. Copiar estado lógico
+    objetivoX           = otro.objetivoX;
+    objetivoY           = otro.objetivoY;
+    objetivoRadio       = otro.objetivoRadio;
+    spawnX              = otro.spawnX;
+    spawnY              = otro.spawnY;
+    tiempoInvulnerable  = otro.tiempoInvulnerable;
+    tiempoHackeo        = otro.tiempoHackeo;
+    tiempoHackeoMax     = otro.tiempoHackeoMax;
+    haciendoHackeo      = otro.haciendoHackeo;
+    tiempoContador      = otro.tiempoContador;
+    animandoDestruccion = otro.animandoDestruccion;
+    frameDestruccion    = otro.frameDestruccion;
+    tiempoFrameDestr    = otro.tiempoFrameDestr;
+    duracionFrameDestr  = otro.duracionFrameDestr;
+    framesDestruccion   = otro.framesDestruccion;   // QPixmap copy-on-write
+    jugadorCompletamenteOculto = otro.jugadorCompletamenteOculto;
+    sinVidas            = otro.sinVidas;
+    estadosAnteriores   = otro.estadosAnteriores;
+    modoDificil         = otro.modoDificil;
+
+    // 5. Deep copy de robots
+    for (RobotSeguridad* r : otro.robots)
+        robots.push_back(new RobotSeguridad(*r));
+
+    // 6. Punteros Qt: la copia no hereda ítems de otra escena
+    escena              = nullptr;
+    itemObjetivo        = nullptr;
+    itemBarraFondo      = nullptr;
+    itemBarraRelleno    = nullptr;
+    itemHUDTimer        = nullptr;
+    debugJugadorRect    = nullptr;
+    filtroOscuridad     = nullptr;
+
+    return *this;
 }
 
 bool Nivel_2::operator==(const Nivel_2& otro) const
@@ -90,6 +151,7 @@ Nivel_2::~Nivel_2()
     musicaFondo.stop();
     sonidoHackeoLoop.stop();
     limpiarRobots();
+    delete Escenario;   // liberar el QPixmap del fondo (new en constructor)
 }
 
 void Nivel_2::limpiarRobots()
@@ -192,28 +254,21 @@ void Nivel_2::generarRobots()
     float RADIO_DESENGANCHE;
     float VELPATRULLA;
     float VELPERSECUSION;
-    switch (modoDificil) {
-    case false: //easy
+    if(!modoDificil){
         RADIO_DETECCION   = 120.f;
         RADIO_DESENGANCHE = 110.f;
         VELPATRULLA = 80.f;
         VELPERSECUSION = 100.f;
-
-        break;
-    case true: //medium
-
+    }else{
         RADIO_DETECCION   = 100.f;
         RADIO_DESENGANCHE = 90.f;
         VELPATRULLA = 100.f;
         VELPERSECUSION = 110.f;
-        break;
-    default:
-        break;
     }
 
     // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
     std::vector<Punto2D> wp1 = {
-        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{800.f,96.f}
+        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{1000.f,96.f}
     };
 
     //{196.f, 96.f}, {956.f, 96.f},
@@ -229,7 +284,7 @@ void Nivel_2::generarRobots()
     // ── Robot 2: patrulla el sector central ──────────────────────────────
     std::vector<Punto2D> wp2 = {
         {1253.f, 715.f}, {184.f, 715.f},
-        {700.f, 715.f}, {700.f, 512.f},
+        {700.f, 715.f}, {700.f, 512.f},{366.f,512.f},{366.f,412.f},{366.f,512.f},{700.f,512.f},
         {700.f,715.f}
     };
     robots.push_back(new RobotSeguridad(
@@ -273,6 +328,7 @@ void Nivel_2::generarRobots()
         wp3
         ));
 }
+
 
 
 

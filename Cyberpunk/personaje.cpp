@@ -105,6 +105,65 @@ Personaje::Personaje(const Personaje& otro)
     std::copy(std::begin(otro.keys), std::end(otro.keys), std::begin(keys));
 }
 
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Personaje posee Sprite (QPixmap*): hay que liberar el antiguo
+//  antes de copiar, y hacer deep copy del nuevo.
+//  Los vectores de frames NO se copian: deben recargarse con
+//  cargarSpritesNivelX() porque dependen de la escena activa.
+//  itemGrafico tampoco se copia: pertenece a la escena Qt.
+// ============================================================
+Personaje& Personaje::operator=(const Personaje& otro)
+{
+    if (this == &otro) return *this;
+
+    // Primero asignar la parte base (posición, velocidad, activa, itemGrafico=nullptr)
+    EntidadJuego::operator=(otro);
+
+    // Liberar recurso dinámico propio antes de pisar
+    delete Sprite;
+    Sprite = otro.Sprite ? new QPixmap(*otro.Sprite) : nullptr;
+
+    // Copiar estado lógico
+    ANCHO             = otro.ANCHO;
+    ALTO              = otro.ALTO;
+    spriteAncho       = otro.spriteAncho;
+    spriteAlto        = otro.spriteAlto;
+    hitboxOffsetX     = otro.hitboxOffsetX;
+    hitboxOffsetY     = otro.hitboxOffsetY;
+    hitboxAnchoReal   = otro.hitboxAnchoReal;
+    hitboxAltoReal    = otro.hitboxAltoReal;
+    estadoAnim        = otro.estadoAnim;
+    frameActual       = otro.frameActual;
+    tiempoFrame       = otro.tiempoFrame;
+    duracionFrame     = otro.duracionFrame;
+    miraDerecha       = otro.miraDerecha;
+    enCaidaFinal      = otro.enCaidaFinal;
+    vidas             = otro.vidas;
+    velMax            = otro.velMax;
+    energia           = otro.energia;
+    enSuelo           = otro.enSuelo;
+    puedeDoubleSalto  = otro.puedeDoubleSalto;
+    fuerzaSalto       = otro.fuerzaSalto;
+    saltosRestantes   = otro.saltosRestantes;
+    tiempoViento      = otro.tiempoViento;
+    yMasAlta          = otro.yMasAlta;
+    plataformasCalda  = otro.plataformasCalda;
+    deslizando        = otro.deslizando;
+    tiempoDesliz      = otro.tiempoDesliz;
+    boostActivo       = otro.boostActivo;
+    tiempoBoost       = otro.tiempoBoost;
+    cooldownBoost     = otro.cooldownBoost;
+    clase             = otro.clase;
+    cooldownHabilidad = otro.cooldownHabilidad;
+    tiempoSigiloActivo = otro.tiempoSigiloActivo;
+    std::copy(std::begin(otro.keys), std::end(otro.keys), std::begin(keys));
+
+    // Los vectores de frames (sprites) NO se copian intencionalmente:
+    // deben recargarse llamando a cargarSpritesNivelX() según el nivel activo.
+
+    return *this;
+}
 
 //---------------------------------------------------------------
 bool Personaje::operator==(const Personaje& otro) const

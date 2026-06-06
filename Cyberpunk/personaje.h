@@ -49,6 +49,7 @@ public:
     ~Personaje() override;
     //----------- Sobrecargas Obligatorias
     Personaje(const Personaje& otro);
+    Personaje& operator=(const Personaje& otro);  // Regla de los Tres
     bool operator==(const Personaje& otro) const;
 
     // ── Entrada ──────────────────────────────────────────────

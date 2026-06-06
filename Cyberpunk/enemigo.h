@@ -19,6 +19,7 @@ public:
     Enemigo(float x, float y, float vel, float r);
     //Sobrecargas Obligatorias
     Enemigo(const Enemigo& otro);
+    Enemigo& operator=(const Enemigo& otro);  // Regla de los Tres
     bool operator==(const Enemigo& otro) const;
 
     // ── Ciclo del agente inteligente ────────────────────────

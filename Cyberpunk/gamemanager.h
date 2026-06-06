@@ -72,7 +72,8 @@ private slots:
 
 private:
 
-    GameManager(const GameManager&) = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
+    GameManager(const GameManager&)            = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
+    GameManager& operator=(const GameManager&) = delete;  // -> Regla de los Tres: bloquear asignación
 
     QGraphicsScene* escena;
     QGraphicsView*  vista;

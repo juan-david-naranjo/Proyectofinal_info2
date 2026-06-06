@@ -67,6 +67,7 @@ public:
     EntidadJuego();
     EntidadJuego(float X, float Y);
     EntidadJuego(const EntidadJuego& otro);
+    EntidadJuego& operator=(const EntidadJuego& otro);  // Regla de los Tres
     bool operator==(const EntidadJuego& otro) const;
 
 
