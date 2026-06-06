@@ -15,7 +15,7 @@ Nivel_2::Nivel_2()
     , tiempoContador(0.f)
     ,itemObjetivo(nullptr)
 {
-    tiempoRestante = 120;
+    tiempoRestante = 0;
     Escenario= new QPixmap(":/Kael_nivel2/Sprites/Nivel2/Escenario_V2 sin marca de agua.png");
     // ── Cargar sonidos ────────────────────────────────────────────────────
     // Ajusta las rutas según tus recursos (qrc o ruta local)
@@ -110,7 +110,7 @@ void Nivel_2::inicializar(Personaje* p)
 {
 
     tiempoInvulnerable = 0.f;
-    tiempoRestante     = 120;        // ← bug de timer resuelto de paso
+    tiempoRestante     = 100;        // ← bug de timer resuelto de paso
     tiempoContador     = 0.f;
     haciendoHackeo     = false;
     tiempoHackeo       = 0.f;
@@ -192,28 +192,21 @@ void Nivel_2::generarRobots()
     float RADIO_DESENGANCHE;
     float VELPATRULLA;
     float VELPERSECUSION;
-    switch (modoDificil) {
-    case false: //easy
+    if(!modoDificil){
         RADIO_DETECCION   = 120.f;
         RADIO_DESENGANCHE = 110.f;
         VELPATRULLA = 80.f;
         VELPERSECUSION = 100.f;
-
-        break;
-    case true: //medium
-
+    }else{
         RADIO_DETECCION   = 100.f;
         RADIO_DESENGANCHE = 90.f;
         VELPATRULLA = 100.f;
         VELPERSECUSION = 110.f;
-        break;
-    default:
-        break;
     }
 
     // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
     std::vector<Punto2D> wp1 = {
-        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{800.f,96.f}
+        {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{1000.f,96.f}
     };
 
     //{196.f, 96.f}, {956.f, 96.f},
@@ -229,7 +222,7 @@ void Nivel_2::generarRobots()
     // ── Robot 2: patrulla el sector central ──────────────────────────────
     std::vector<Punto2D> wp2 = {
         {1253.f, 715.f}, {184.f, 715.f},
-        {700.f, 715.f}, {700.f, 512.f},
+        {700.f, 715.f}, {700.f, 512.f},{366.f,512.f},{366.f,412.f},{366.f,512.f},{700.f,512.f},
         {700.f,715.f}
     };
     robots.push_back(new RobotSeguridad(
