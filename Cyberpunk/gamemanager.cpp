@@ -3,6 +3,7 @@
 #include <QFont>
 #include <QBrush>
 #include <QPen>
+#include <QApplication>
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Constructor / Destructor
@@ -48,11 +49,11 @@ void GameManager::cargarSonidos()
 {
     musicaMenu.setAudioOutput(&audioMenu);
     musicaMenu.setSource(QUrl("qrc:/sonidoswav/Sonidos/End of Line (From TRON_ LegacyScore).mp3"));
-    audioMenu.setVolume(0.5f);
+    audioMenu.setVolume(0.3f);
     musicaMenu.setLoops(QMediaPlayer::Infinite);
 
     sonidoClick.setSource(QUrl("qrc:/sonidoswav/Sonidos/clickwav.wav"));
-    sonidoClick.setVolume(0.8f);
+    sonidoClick.setVolume(0.4f);
 }
 
 void GameManager::detenerTodaMusica()
@@ -149,6 +150,56 @@ void GameManager::irASeleccionDificultad()
     mostrarPantallaSeleccionDificultad();
 }
 
+void GameManager::irASeleccionClase()
+{
+    sonidoClick.play(); // Opcional, pero da buen feedback al hacer clic en "Continuar"
+
+    // ── 1. LA LIMPIEZA QUE FALTABA ──
+    itemsOverlay.clear(); // Vaciamos la lista para evitar dangling pointers
+
+    // Limpiamos los restos lógicos del Nivel 1 (si venimos de ahí)
+    if (estadoActual == Estado::NIVEL_1_COMPLETADO || estadoActual == Estado::NIVEL_1) {
+        nivel1->limpiarEscena();
+        if (jugador) jugador->invalidarItem();
+    }
+
+    escena->clear();
+
+    // Actualizamos el estado para no causar bugs con el teclado
+    estadoActual = Estado::SELECCION_CLASE;
+
+    // ── 2. PREPARAR LA CÁMARA Y EL FONDO ──
+    escena->setBackgroundBrush(QColor(5, 10, 20));
+    escena->setSceneRect(0, 0, 1250, 700);
+
+    // Reseteamos la cámara por si el Nivel 1 la dejó movida o con zoom
+    vista->resetTransform();
+    vista->setAlignment(Qt::AlignCenter);
+
+    // ── 3. DIBUJAR LA INTERFAZ ──
+    agregarTextoOverlay("CARGANDO PERFIL TÁCTICO", QColor(0, 255, 120), 40, -150.f, true);
+    agregarTextoOverlay("Selecciona la especialidad del traje de Kael", Qt::white, 16, -90.f);
+
+    BotonMenu* btnVelocista = agregarBotonOverlay("Clase: VELOCISTA", -20.f);
+    agregarTextoOverlay("Habilidad: Dash de velocidad extrema (3s).", QColor(150,150,150), 12, 15.f);
+
+    BotonMenu* btnEspectro = agregarBotonOverlay("Clase: ESPECTRO", 70.f);
+    agregarTextoOverlay("Habilidad: Camuflaje óptico indetectable (2s).", QColor(150,150,150), 12, 105.f);
+
+    connect(btnVelocista, &BotonMenu::clicked, this, [this](){
+        sonidoClick.play();
+        jugador->setClase(Personaje::ClaseActiva::VELOCISTA);
+        irANivel2(); // ¡Ahora sí vamos al nivel!
+    });
+
+    connect(btnEspectro, &BotonMenu::clicked, this, [this](){
+        sonidoClick.play();
+        jugador->setClase(Personaje::ClaseActiva::ESPECTRO);
+        irANivel2(); // ¡Ahora sí vamos al nivel!
+    });
+}
+
+
 void GameManager::irANivel1()
 {
     sonidoClick.play();
@@ -175,9 +226,10 @@ void GameManager::irANivel1()
 void GameManager::irANivel2()
 {
     detenerTodaMusica();
+    //aplicar dificultad
+    nivel2->setDificultad(dificultadActual == Dificultad::DIFICIL);
 
     itemsOverlay.clear();   // escena->clear() destruirá estos ítems
-
     nivel2->limpiarEscena();
     if (jugador) jugador->invalidarItem();
     escena->clear();
@@ -307,20 +359,26 @@ void GameManager::onIrAlMenu()
 
     itemsOverlay.clear();
 
-    if (estadoActual == Estado::NIVEL_1        ||
-        estadoActual == Estado::NIVEL_1_COMPLETADO ||
-        estadoActual == Estado::PUERTA_CERRADA)
+    // ── ¡LA CORRECCIÓN MÁGICA! ──
+    // Necesitamos saber de qué nivel venimos si estamos en pausa
+    Estado ref = (estadoActual == Estado::PAUSADO)
+                     ? estadoAntesDePausa
+                     : estadoActual;
+
+    if (ref == Estado::NIVEL_1        ||
+        ref == Estado::NIVEL_1_COMPLETADO ||
+        ref == Estado::PUERTA_CERRADA)
     {
         nivel1->limpiarEscena();
         if (jugador) jugador->invalidarItem();
     }
-    else if (estadoActual == Estado::NIVEL_2)
+    else if (ref == Estado::NIVEL_2)
     {
-        nivel2->limpiarEscena();
+        nivel2->limpiarEscena(); // ¡AHORA SÍ SE LIMPIA EL NIVEL 2!
         if (jugador) jugador->invalidarItem();
     }
-    else if (estadoActual == Estado::DERROTA ||
-             estadoActual == Estado::VICTORIA)
+    else if (ref == Estado::DERROTA ||
+             ref == Estado::VICTORIA)
     {
         if (jugador) jugador->invalidarItem();
     }
@@ -348,33 +406,6 @@ void GameManager::onSeleccionarDificil()
     timer->start(MS_POR_TICK);
 }
 
-void GameManager::irASeleccionClase()           //tipo de personalidad de kael
-{
-    limpiarOverlay();
-    //escena->clear();
-    escena->setBackgroundBrush(QColor(5, 10, 20));
-    escena->setSceneRect(0, 0, 1250, 700);
-    agregarTextoOverlay("CARGANDO PERFIL TÁCTICO", QColor(0, 255, 120), 40, -150.f, true);
-    agregarTextoOverlay("Selecciona la especialidad del traje de Kael", Qt::white, 16, -90.f);
-
-    BotonMenu* btnVelocista = agregarBotonOverlay("Clase: VELOCISTA", -20.f);
-    agregarTextoOverlay("Habilidad: Dash de velocidad extrema (3s).", QColor(150,150,150), 12, 15.f);
-
-    BotonMenu* btnEspectro = agregarBotonOverlay("Clase: ESPECTRO", 70.f);
-    agregarTextoOverlay("Habilidad: Camuflaje óptico indetectable (2s).", QColor(150,150,150), 12, 105.f);
-
-    connect(btnVelocista, &BotonMenu::clicked, this, [this](){
-        sonidoClick.play();
-        jugador->setClase(Personaje::ClaseActiva::VELOCISTA);
-        irANivel2(); // ¡Ahora sí vamos al nivel!
-    });
-
-    connect(btnEspectro, &BotonMenu::clicked, this, [this](){
-        sonidoClick.play();
-        jugador->setClase(Personaje::ClaseActiva::ESPECTRO);
-        irANivel2(); // ¡Ahora sí vamos al nivel!
-    });
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Entrada de teclado
@@ -556,9 +587,14 @@ void GameManager::mostrarMenu()
         irASeleccionDificultad();
     }, Qt::QueuedConnection);
 
+    BotonMenu* btnSalir = agregarBotonOverlay("✕  SALIR", 80.f);
+    connect(btnSalir, &BotonMenu::clicked, this, [](){
+        QApplication::quit();
+    }, Qt::QueuedConnection);
+
     agregarTextoOverlay(
         "WASD — Mover  |  ESPACIO — Saltar/Boost  |  ESC — Pausa",
-        QColor(90, 110, 100), 13, 110.f);
+        QColor(90, 110, 100), 13, 140.f);
 }
 
 // ── Selección de dificultad ───────────────────────────────────────────────
@@ -607,6 +643,10 @@ void GameManager::mostrarPantallaPausa()
 // ── Victoria ──────────────────────────────────────────────────────────────
 void GameManager::mostrarPantallaVictoria()
 {
+    nivel2->limpiarEscena();
+    nivel2->completado=false;
+
+
     agregarFondoOverlay();
     agregarTextoOverlay("HACKEO COMPLETADO",
                         QColor(0, 255, 120), 42, -130.f, true);
@@ -734,6 +774,7 @@ BotonMenu* GameManager::agregarBotonOverlay_Cam(const QString& texto, float offs
 // ── Nivel 1 Completado — usa helpers _Cam para cuadrar con el viewport ────
 void GameManager::mostrarPantallaNivel1Completado()
 {
+
     agregarFondoOverlay_Cam();
 
     agregarTextoOverlay_Cam("ACCESO  CONCEDIDO",

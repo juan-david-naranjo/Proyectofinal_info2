@@ -40,7 +40,8 @@ public:
         PAUSADO,
         VICTORIA,
         DERROTA,
-        PUERTA_CERRADA          // tiempo agotado en nivel 1
+        PUERTA_CERRADA,          // tiempo agotado en nivel 1
+        SELECCION_CLASE         // para proteger la entrada del teclado
     };
     bool operator==(const GameManager& otro) const; // -> Sobrecarga Obligatoria
 
@@ -71,7 +72,8 @@ private slots:
 
 private:
 
-    GameManager(const GameManager&) = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
+    GameManager(const GameManager&)            = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
+    GameManager& operator=(const GameManager&) = delete;  // -> Regla de los Tres: bloquear asignación
 
     QGraphicsScene* escena;
     QGraphicsView*  vista;
@@ -100,13 +102,12 @@ private:
     // ── Transiciones ──────────────────────────────────────────
     void irAMenu();
     void irASeleccionDificultad();
+    void irASeleccionClase();
     void irANivel1();
     void irANivel2();
     void pausar();
     void reanudar();
     void mostrarVictoria();
-    void irASeleccionClase();
-
     void mostrarGameOver();
     void mostrarPuertaCerrada();
     void mostrarNivel1Completado();

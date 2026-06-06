@@ -31,6 +31,30 @@ bool Nivel::operator==(const Nivel& otro) const
            && completado == otro.completado;
 }
 
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Hace deep copy de las plataformas (heap) y copia el puntero
+//  compartido al jugador (el jugador no pertenece al nivel).
+// ============================================================
+Nivel& Nivel::operator=(const Nivel& otro)
+{
+    if (this == &otro) return *this;
+
+    limpiarPlataformas();   // liberar plataformas actuales
+
+    tiempoRestante  = otro.tiempoRestante;
+    completado      = otro.completado;
+    tiempoAcumulado = otro.tiempoAcumulado;
+    jugador         = otro.jugador;         // puntero compartido, no se duplica
+
+    for (Plataforma* plat : otro.plataformas)
+        plataformas.push_back(new Plataforma(*plat));
+
+    return *this;
+}
+
+
+
 
 // Resuelve colisiones del personaje contra todas las plataformas del nivel.
 // Se llama DESPUÉS de mover al personaje (en actualizar).

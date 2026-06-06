@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram name="Diagrama de Clases — Resumen">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ════════ CLASES ════════ -->
+
+        <mxCell id="2"
+          value="&lt;b&gt;GameManager&lt;/b&gt;&lt;br/&gt;&lt;i style='font-size:9px'&gt;extends QObject&lt;/i&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="390" y="40" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="3"
+          value="&lt;b&gt;GestorFisicas&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="640" y="45" width="130" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="4"
+          value="&lt;i&gt;«abstract»&lt;/i&gt;&lt;br/&gt;&lt;b&gt;Nivel&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="30" y="175" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="5"
+          value="&lt;i&gt;«abstract»&lt;/i&gt;&lt;br/&gt;&lt;b&gt;EntidadJuego&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="300" y="175" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="6"
+          value="&lt;b&gt;BotonMenu&lt;/b&gt;&lt;br/&gt;&lt;i style='font-size:9px'&gt;extends QGraphicsObject&lt;/i&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="620" y="175" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="7"
+          value="&lt;b&gt;Nivel_1&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="10" y="350" width="110" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="8"
+          value="&lt;b&gt;Nivel_2&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="150" y="350" width="110" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="9"
+          value="&lt;b&gt;Personaje&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="310" y="350" width="110" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="10"
+          value="&lt;i&gt;«abstract»&lt;/i&gt;&lt;br/&gt;&lt;b&gt;Enemigo&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="450" y="345" width="110" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="11"
+          value="&lt;b&gt;Plataforma&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="590" y="350" width="110" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="12"
+          value="&lt;b&gt;RobotSeguridad&lt;/b&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="445" y="510" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ════════ HERENCIA — flecha simple, hijo → padre ════════ -->
+
+        <mxCell id="13" value=""
+          style="endArrow=open;endFill=0;startArrow=none;"
+          edge="1" source="7" target="4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="14" value=""
+          style="endArrow=open;endFill=0;startArrow=none;"
+          edge="1" source="8" target="4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="15" value=""
+          style="endArrow=open;endFill=0;startArrow=none;"
+          edge="1" source="9" target="5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="16" value=""
+          style="endArrow=open;endFill=0;startArrow=none;"
+          edge="1" source="10" target="5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="17" value=""
+          style="endArrow=open;endFill=0;startArrow=none;"
+          edge="1" source="11" target="5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="18" value=""
+          style="endArrow=open;endFill=0;startArrow=none;"
+          edge="1" source="12" target="10" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ════════ COMPOSICIÓN — rombo negro ◆ en el TODO, parte → todo ════════ -->
+
+        <!-- Nivel_1 → GameManager -->
+        <mxCell id="19" value=""
+          style="endArrow=diamond;endFill=1;startArrow=none;"
+          edge="1" source="7" target="2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Nivel_2 → GameManager -->
+        <mxCell id="20" value=""
+          style="endArrow=diamond;endFill=1;startArrow=none;"
+          edge="1" source="8" target="2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Personaje → GameManager -->
+        <mxCell id="21" value="jugador"
+          style="endArrow=diamond;endFill=1;startArrow=none;fontSize=10;"
+          edge="1" source="9" target="2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- BotonMenu → GameManager -->
+        <mxCell id="22" value=""
+          style="endArrow=diamond;endFill=1;startArrow=none;"
+          edge="1" source="6" target="2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Plataforma → Nivel -->
+        <mxCell id="23" value="1..*"
+          style="endArrow=diamond;endFill=1;startArrow=none;fontSize=10;"
+          edge="1" source="11" target="4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RobotSeguridad → Nivel_2 -->
+        <mxCell id="24" value="1..*"
+          style="endArrow=diamond;endFill=1;startArrow=none;fontSize=10;"
+          edge="1" source="12" target="8" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ════════ AGREGACIÓN — rombo blanco ◇ en el TODO, parte → todo ════════ -->
+
+        <!-- Personaje → Nivel  (Nivel referencia pero no crea al Personaje) -->
+        <mxCell id="25" value=""
+          style="endArrow=diamond;endFill=0;startArrow=none;"
+          edge="1" source="9" target="4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ════════ DEPENDENCIA — línea punteada, usuario → usado ════════ -->
+
+        <mxCell id="26" value="«uses»"
+          style="endArrow=open;endFill=0;startArrow=none;dashed=1;fontSize=10;"
+          edge="1" source="9" target="3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="27" value="«uses»"
+          style="endArrow=open;endFill=0;startArrow=none;dashed=1;fontSize=10;"
+          edge="1" source="4" target="3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="28" value="«uses»"
+          style="endArrow=open;endFill=0;startArrow=none;dashed=1;fontSize=10;"
+          edge="1" source="12" target="3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -49,6 +49,7 @@ public:
                    const std::vector<Punto2D> &waypoints);
 
     RobotSeguridad(const RobotSeguridad& otro);
+    RobotSeguridad& operator=(const RobotSeguridad& otro);  // Regla de los Tres
     bool operator==(const RobotSeguridad& otro) const;
 
     // ── Estado del agente ────────────────────────────────────

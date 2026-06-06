@@ -49,6 +49,7 @@ public:
     ~Personaje() override;
     //----------- Sobrecargas Obligatorias
     Personaje(const Personaje& otro);
+    Personaje& operator=(const Personaje& otro);  // Regla de los Tres
     bool operator==(const Personaje& otro) const;
 
     // ── Entrada ──────────────────────────────────────────────
@@ -80,6 +81,10 @@ public:
     void setHitboxOffset(float offsetX, float offsetY,
                          float anchoEfectivo, float altoEfectivo);
 
+    // ── Tamaño visual del sprite (solo nivel 1) ───────────────
+    // No afecta hitbox ni física. Llamar ANTES de cargarSpritesNivel1().
+    void setSpriteSize(float ancho, float alto);
+
     // ── Getters ───────────────────────────────────────────────
     int   getVidas()        const;
     float getEnergia()      const;
@@ -97,7 +102,9 @@ public:
     void setVidas(int cantidad);//setter para nivel_2
     float getHitboxOffsetX() const { return hitboxOffsetX; }
     float getHitboxOffsetY() const { return hitboxOffsetY; }
-    float getProgresoCooldownBoost();
+
+    float getProgresoCooldownBoost();       //helper para el HUD
+
 
 
     // ── Daño / reset ──────────────────────────────────────────
@@ -105,9 +112,14 @@ public:
     void resetearPosicion(float rx, float ry);
 
 private:
-    // ── Tamaño lógico (modificable via setHitboxOffset) ───────
+    // ── Tamaño lógico de la hitbox (modificable via setHitboxOffset) ──
     float ANCHO = 70.f;
     float ALTO  = 70.f;
+
+    // ── Tamaño visual del sprite nivel 1 (independiente de la hitbox) ──
+    // Estos valores NO se tocan al llamar setHitboxOffset.
+    float spriteAncho = 70.f;
+    float spriteAlto  = 70.f;
 
     // Hitbox interna (puede diferir del sprite para mayor precisión)
     float hitboxOffsetX   = 15.f;
@@ -161,8 +173,8 @@ private:
 
     // ── Estado general ────────────────────────────────────────
     int   vidas;
-    float energia;
     float velMax;
+    float energia;          //para el boost
     bool  enSuelo;
     bool  keys[4];       // 0=Izq 1=Der 2=Up 3=Down
     QPixmap* Sprite;

@@ -45,6 +45,76 @@ Nivel_1::~Nivel_1()
 }
 
 // ============================================================
+//  Constructor de copia — Regla de los Tres
+//  Nivel_1 posee Escenario (QPixmap*) dinámico: deep copy.
+//  Los ítems Qt (escena, vista, HUD) no se copian; la copia
+//  arranca sin escena y debe llamar a setScene() + inicializar().
+// ============================================================
+Nivel_1::Nivel_1(const Nivel_1& otro)
+    : Nivel(otro)                              // copia base (plataformas, jugador, tiempo)
+    , Escenario(otro.Escenario               // deep copy del QPixmap del fondo
+                ? new QPixmap(*otro.Escenario)
+                : nullptr)
+    , puertaCerrada(otro.puertaCerrada)
+    , spawnX(otro.spawnX)
+    , spawnY(otro.spawnY)
+    , timerAcumulado(otro.timerAcumulado)
+    , modoDificil(otro.modoDificil)
+    , vientoAmplitud(otro.vientoAmplitud)
+    , saltandoAnterior(otro.saltandoAnterior)
+    // Punteros Qt: la copia no hereda la escena ni ítems gráficos.
+    // Deben re-crearse con setScene() e inicializar().
+    , escena(nullptr)
+    , vista(nullptr)
+    , fondoHUD(nullptr)
+    , hudTiempo(nullptr)
+    , hudDificultad(nullptr)
+    , hudPuerta(nullptr)
+    , debugHitboxItem(nullptr)
+{}
+
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Patrón copy-and-swap para seguridad ante auto-asignación.
+// ============================================================
+Nivel_1& Nivel_1::operator=(const Nivel_1& otro)
+{
+    if (this == &otro) return *this;
+
+    // Liberar recursos propios antes de pisar
+    limpiarEscena();
+    delete Escenario;
+
+    // Copiar parte base
+    Nivel::operator=(otro);
+
+    // Deep copy del recurso dinámico
+    Escenario       = otro.Escenario ? new QPixmap(*otro.Escenario) : nullptr;
+
+    // Copiar estado lógico
+    puertaCerrada   = otro.puertaCerrada;
+    spawnX          = otro.spawnX;
+    spawnY          = otro.spawnY;
+    timerAcumulado  = otro.timerAcumulado;
+    modoDificil     = otro.modoDificil;
+    vientoAmplitud  = otro.vientoAmplitud;
+    saltandoAnterior = otro.saltandoAnterior;
+
+    // Punteros Qt: la copia no hereda ítems de otra escena
+    escena          = nullptr;
+    vista           = nullptr;
+    fondoHUD        = nullptr;
+    hudTiempo       = nullptr;
+    hudDificultad   = nullptr;
+    hudPuerta       = nullptr;
+    debugHitboxItem = nullptr;
+
+    return *this;
+}
+
+
+
+// ============================================================
 //  setDificultad
 // ============================================================
 void Nivel_1::setDificultad(bool dificil)
@@ -129,7 +199,9 @@ void Nivel_1::inicializar(Personaje* p)
     timerAcumulado   = 0.f;
     tiempoAcumulado  = 0.f;
     saltandoAnterior = false;
-    jugador->setHitboxOffset(10.f,2.f,40.f,60.f);
+
+    jugador->setHitboxOffset(2.f,2.f,30.f,60.f);
+
 
     generarPlataformas();
 

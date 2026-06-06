@@ -20,6 +20,7 @@ public:
     float tiempoAcumulado;     // Para el viento y otras físicas time-based
 
     bool operator==(const Nivel& otro) const;           // -> Sobrecarga Obligatoria
+    Nivel& operator=(const Nivel& otro);                 // Regla de los Tres
 
     std::vector<Plataforma*>   plataformas;
     Personaje*                 jugador;

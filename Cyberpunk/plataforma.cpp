@@ -51,6 +51,29 @@ bool Plataforma::operator==(const Plataforma& otro) const
            && ancho == otro.ancho && alto == otro.alto;
 }
 
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Plataforma no posee recursos en heap propios (laberintos es
+//  un vector de QPixmap con copy-on-write; itemGrafico pertenece
+//  a la escena Qt y se gestiona en EntidadJuego).
+// ============================================================
+Plataforma& Plataforma::operator=(const Plataforma& otro)
+{
+    if (this == &otro) return *this;
+    EntidadJuego::operator=(otro);          // posición, velocidad, activa
+    ancho               = otro.ancho;
+    alto                = otro.alto;
+    esMovil             = otro.esMovil;
+    tipoMuro            = otro.tipoMuro;
+    amplitudMovimiento  = otro.amplitudMovimiento;
+    velocidadMovimiento = otro.velocidadMovimiento;
+    origenX             = otro.origenX;
+    laberintos          = otro.laberintos;  // QPixmap copy-on-write, seguro
+    // itemGrafico: no se copia, pertenece a la escena Qt
+    return *this;
+}
+
+
 //--------------------------------------------------------------
 // getHitbox() está definido inline en plataforma.h — devuelve Hitbox(x, y, ancho, alto).
 // No se necesita getBoundingBox() con QRectF: el sistema de físicas usa Hitbox directamente.

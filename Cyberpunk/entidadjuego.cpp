@@ -29,6 +29,25 @@ bool EntidadJuego::operator==(const EntidadJuego& otro) const
     return x == otro.x && y == otro.y;
 }
 
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  itemGrafico pertenece a la escena Qt y NO se copia;
+//  la instancia asignada conserva (o mantiene nulo) el suyo.
+// ============================================================
+EntidadJuego& EntidadJuego::operator=(const EntidadJuego& otro)
+{
+    if (this == &otro) return *this;
+    x      = otro.x;
+    y      = otro.y;
+    Vx     = otro.Vx;
+    Vy     = otro.Vy;
+    activa = otro.activa;
+    // itemGrafico: no se copia — pertenece a la escena Qt
+    return *this;
+}
+
+
+
 
 
 // Getters de posición y velocidad
