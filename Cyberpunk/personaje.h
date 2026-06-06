@@ -111,6 +111,8 @@ public:
     void recibirDanio(int cantidad = 1);
     void resetearPosicion(float rx, float ry);
 
+    void resetearEfectos();
+
 private:
     // ── Tamaño lógico de la hitbox (modificable via setHitboxOffset) ──
     float ANCHO = 70.f;

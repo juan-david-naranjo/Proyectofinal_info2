@@ -201,7 +201,7 @@ void Nivel_1::inicializar(Personaje* p)
     saltandoAnterior = false;
 
     jugador->setHitboxOffset(2.f,2.f,30.f,60.f);
-
+    jugador->resetearEfectos();
 
     generarPlataformas();
 

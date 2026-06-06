@@ -660,6 +660,13 @@ void GameManager::mostrarPantallaVictoria()
     BotonMenu* btnMenu = agregarBotonOverlay("⌂  MENÚ PRINCIPAL", 80.f);
     connect(btnMenu, &BotonMenu::clicked,
             this, &GameManager::onIrAlMenu, Qt::QueuedConnection);
+
+    // Se coloca en 150.f para mantener la misma separación de 70px que los anteriores
+    BotonMenu* btnSalir = agregarBotonOverlay("✗  SALIR DEL JUEGO", 150.f);
+
+    // Conectamos directamente al slot 'quit' de la aplicación global de Qt
+    connect(btnSalir, &BotonMenu::clicked,
+            qApp, &QCoreApplication::quit, Qt::QueuedConnection);
 }
 
 // ── Game Over (nivel 2) ───────────────────────────────────────────────────
@@ -774,6 +781,24 @@ BotonMenu* GameManager::agregarBotonOverlay_Cam(const QString& texto, float offs
 // ── Nivel 1 Completado — usa helpers _Cam para cuadrar con el viewport ────
 void GameManager::mostrarPantallaNivel1Completado()
 {
+    // Limpiamos los restos lógicos del Nivel 1 (si venimos de ahí)
+    if (estadoActual == Estado::NIVEL_1_COMPLETADO) {
+        nivel1->limpiarEscena();
+        if (jugador) jugador->invalidarItem();
+    }
+
+    escena->clear();
+
+    // Actualizamos el estado para no causar bugs con el teclado
+    estadoActual = Estado::SELECCION_CLASE;
+
+    // ── 2. PREPARAR LA CÁMARA Y EL FONDO ──
+    escena->setBackgroundBrush(QColor(5, 10, 20));
+    escena->setSceneRect(0, 0, 1250, 700);
+
+    // Reseteamos la cámara por si el Nivel 1 la dejó movida o con zoom
+    vista->resetTransform();
+    vista->setAlignment(Qt::AlignCenter);
 
     agregarFondoOverlay_Cam();
 

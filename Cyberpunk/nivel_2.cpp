@@ -15,7 +15,7 @@ Nivel_2::Nivel_2()
     , tiempoContador(0.f)
     ,itemObjetivo(nullptr)
 {
-    tiempoRestante = 120;
+    tiempoRestante = 0;
     Escenario= new QPixmap(":/Kael_nivel2/Sprites/Nivel2/Escenario_V2 sin marca de agua.png");
     // ── Cargar sonidos ────────────────────────────────────────────────────
     // Ajusta las rutas según tus recursos (qrc o ruta local)
@@ -172,24 +172,25 @@ void Nivel_2::inicializar(Personaje* p)
 {
 
     tiempoInvulnerable = 0.f;
-    tiempoRestante     = 120;        // ← bug de timer resuelto de paso
+    tiempoRestante     = 100;        // ← bug de timer resuelto de paso
     tiempoContador     = 0.f;
     haciendoHackeo     = false;
     tiempoHackeo       = 0.f;
     jugador = p;
     sinVidas           = false;
     completado         = false;
-    jugador->setVidas(2);
-    jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
     loadDestAnim();         //animacion de destruccion de computadora
 
     generarLaberinto();
     generarRobots();
 
 
-    if (jugador)
+    if (jugador){
+        jugador->resetearEfectos();
         jugador->resetearPosicion(spawnX, spawnY);
-
+        jugador->setVidas(2);
+        jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
+    }
 
 
     // ── Inicializar estados anteriores de los robots ──────────────────────
@@ -509,15 +510,16 @@ void Nivel_2::resolverColisiones()
     float jy  = jugador->getY();
     float jvx = jugador->getVx();
     float jvy = jugador->getVy();
-    float jw  = jugador->getAncho();
-    float jh  = jugador->getAlto();
+    Hitbox p  = jugador->getHitbox();
+    // float jw  = jugador->getAncho();
+    // float jh  = jugador->getAlto();
     bool  dummy = false;
 
     for (Plataforma* plat : plataformas)
     {
         Hitbox hb = plat->getHitbox();
         GestorFisicas::resolverColision(
-            jx, jy, jw, jh,
+            jx, jy, p.w, p.h,
             jvx, jvy, dummy,
             hb.x, hb.y, hb.w, hb.h);
     }
@@ -709,7 +711,7 @@ void Nivel_2::actualizar(float dt)
         float jy = jugador->getY() + jugador->getAlto()  * 0.3f;
 
         // 2. Definir el radio de visión (cuánto puede ver a su alrededor en píxeles)
-        float radioVision = 180.f; // Puedes jugar con este número para tunear la dificultad
+        float radioVision = 130.f; // Puedes jugar con este número para tunear la dificultad
 
         // 3. Crear el gradiente radial centrado en el jugador
         QRadialGradient gradiente(jx, jy, radioVision);
