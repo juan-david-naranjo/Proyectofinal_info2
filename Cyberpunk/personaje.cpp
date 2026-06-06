@@ -56,8 +56,8 @@ Personaje::Personaje(float X, float Y) : Personaje()
         itemGrafico->setPixmap(framesIdle[0]);
     }
     QPixmap inicial = n1_framesIdle.empty()
-        ? []{ QPixmap p(70,70); p.fill(Qt::red); return p; }()
-        : n1_framesIdle[0];
+                          ? []{ QPixmap p(70,70); p.fill(Qt::red); return p; }()
+                          : n1_framesIdle[0];
     itemGrafico->setPixmap(inicial);
     itemGrafico->setPos(x, y);
 
@@ -105,6 +105,65 @@ Personaje::Personaje(const Personaje& otro)
     std::copy(std::begin(otro.keys), std::end(otro.keys), std::begin(keys));
 }
 
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Personaje posee Sprite (QPixmap*): hay que liberar el antiguo
+//  antes de copiar, y hacer deep copy del nuevo.
+//  Los vectores de frames NO se copian: deben recargarse con
+//  cargarSpritesNivelX() porque dependen de la escena activa.
+//  itemGrafico tampoco se copia: pertenece a la escena Qt.
+// ============================================================
+Personaje& Personaje::operator=(const Personaje& otro)
+{
+    if (this == &otro) return *this;
+
+    // Primero asignar la parte base (posición, velocidad, activa, itemGrafico=nullptr)
+    EntidadJuego::operator=(otro);
+
+    // Liberar recurso dinámico propio antes de pisar
+    delete Sprite;
+    Sprite = otro.Sprite ? new QPixmap(*otro.Sprite) : nullptr;
+
+    // Copiar estado lógico
+    ANCHO             = otro.ANCHO;
+    ALTO              = otro.ALTO;
+    spriteAncho       = otro.spriteAncho;
+    spriteAlto        = otro.spriteAlto;
+    hitboxOffsetX     = otro.hitboxOffsetX;
+    hitboxOffsetY     = otro.hitboxOffsetY;
+    hitboxAnchoReal   = otro.hitboxAnchoReal;
+    hitboxAltoReal    = otro.hitboxAltoReal;
+    estadoAnim        = otro.estadoAnim;
+    frameActual       = otro.frameActual;
+    tiempoFrame       = otro.tiempoFrame;
+    duracionFrame     = otro.duracionFrame;
+    miraDerecha       = otro.miraDerecha;
+    enCaidaFinal      = otro.enCaidaFinal;
+    vidas             = otro.vidas;
+    velMax            = otro.velMax;
+    energia           = otro.energia;
+    enSuelo           = otro.enSuelo;
+    puedeDoubleSalto  = otro.puedeDoubleSalto;
+    fuerzaSalto       = otro.fuerzaSalto;
+    saltosRestantes   = otro.saltosRestantes;
+    tiempoViento      = otro.tiempoViento;
+    yMasAlta          = otro.yMasAlta;
+    plataformasCalda  = otro.plataformasCalda;
+    deslizando        = otro.deslizando;
+    tiempoDesliz      = otro.tiempoDesliz;
+    boostActivo       = otro.boostActivo;
+    tiempoBoost       = otro.tiempoBoost;
+    cooldownBoost     = otro.cooldownBoost;
+    clase             = otro.clase;
+    cooldownHabilidad = otro.cooldownHabilidad;
+    tiempoSigiloActivo = otro.tiempoSigiloActivo;
+    std::copy(std::begin(otro.keys), std::end(otro.keys), std::begin(keys));
+
+    // Los vectores de frames (sprites) NO se copian intencionalmente:
+    // deben recargarse llamando a cargarSpritesNivelX() según el nivel activo.
+
+    return *this;
+}
 
 //---------------------------------------------------------------
 bool Personaje::operator==(const Personaje& otro) const
@@ -138,11 +197,14 @@ void Personaje::saltar()
     frameActual = 0;
     tiempoFrame = 0.f;
 
-    if (itemGrafico) itemGrafico->setPos(x, y);
+    if (itemGrafico) {
+        float spX = x + hitboxOffsetX - (spriteAncho - hitboxAnchoReal) * 0.5f;
+        float spY = y + hitboxOffsetY - (spriteAlto  - hitboxAltoReal)  * 0.5f;
+        itemGrafico->setPos(spX, spY);
+    }
 }
 
 // ============================================================
-//  Boost / Deslizamiento
 // ============================================================
 void Personaje::activarBoost()
 {
@@ -210,7 +272,11 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     // ── Caída final: bloquear física, solo animar ─────────────
     if (enCaidaFinal) {
         tickAnimacion(dt, n1_framesCaidaFinal, false);
-        if (itemGrafico) itemGrafico->setPos(x, y);
+        if (itemGrafico) {
+            float spX = x + hitboxOffsetX - (spriteAncho - hitboxAnchoReal) * 0.5f;
+            float spY = y + hitboxOffsetY - (spriteAlto  - hitboxAltoReal)  * 0.5f;
+            itemGrafico->setPos(spX, spY);
+        }
         return;
     }
 
@@ -238,6 +304,7 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
     if (enSuelo) tiempoViento = 0.f;
 
     // ── 2. Inclinación visual por viento (solo en el aire) ────
+    /*
     if (itemGrafico) {
         if (!enSuelo) {
             float fuerzaViento = GestorFisicas::calcularFuerzaViento(tiempoTotal);
@@ -247,7 +314,7 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
         } else {
             itemGrafico->setRotation(0.f);
         }
-    }
+    }*/
 
     // ── 3. Gravedad + posición ────────────────────────────────
     GestorFisicas::aplicarGravedad(Vy, y, dt);
@@ -289,7 +356,15 @@ void Personaje::actualizarNivel1(float dt, float tiempoTotal)
 
     if (framesN1 && !framesN1->empty()) tickAnimacion(dt, *framesN1, true);
 
-    if (itemGrafico) itemGrafico->setPos(x, y);
+    // Posiciona el sprite de forma que quede centrado sobre la hitbox.
+    // spriteAncho/Alto son el tamaño visual real; hitboxOffset* es el margen
+    // de la hitbox dentro de la celda lógica. El sprite se desplaza para
+    // compensar la diferencia y nunca se redimensiona para encajar en la hitbox.
+    if (itemGrafico) {
+        float spX = x + hitboxOffsetX - (spriteAncho - hitboxAnchoReal) * 0.5f;
+        float spY = y + hitboxOffsetY - (spriteAlto  - hitboxAltoReal)  * 0.5f;
+        itemGrafico->setPos(spX, spY);
+    }
 }
 
 // ============================================================
@@ -408,7 +483,7 @@ void Personaje::actualizarNivel2(float dt)
     // Así los mismos sprites de correr se ven diferente en movimiento vertical
 
     if (velTotal > 10.f && std::abs(Vy) > std::abs(Vx))
-        multAnim = 1.8f;   // ~45% más lento — ajusta este valor a tu gusto
+        multAnim = 1.8f;   // ~45% más lento
 
 
 
@@ -441,8 +516,8 @@ void Personaje::tickAnimacion(float dt, std::vector<QPixmap>& frames,
     if (tiempoFrame >= duracionEfectiva) {
         tiempoFrame = 0.f;
         frameActual = loop
-            ? (frameActual + 1) % (int)frames.size()
-            : std::min(frameActual + 1, (int)frames.size() - 1);
+                          ? (frameActual + 1) % (int)frames.size()
+                          : std::min(frameActual + 1, (int)frames.size() - 1);
     }
 
     QPixmap frame = frames[frameActual];
@@ -500,8 +575,8 @@ void Personaje::cargarSpritesNivel1()
     }
     qDebug() << "Spritesheet N1:" << sheet.width() << "x" << sheet.height();
 
-    const int TW = static_cast<int>(ANCHO);
-    const int TH = static_cast<int>(ALTO);
+    const int TW = static_cast<int>(spriteAncho);
+    const int TH = static_cast<int>(spriteAlto);
 
     auto extraer = [&](int x1, int y1, int w, int h) -> QPixmap {
         if (x1<0||y1<0||x1+w>sheet.width()||y1+h>sheet.height()) {
@@ -533,8 +608,17 @@ void Personaje::cargarSpritesNivel1()
     n1_framesCorriendo.push_back(extraer(402, 44, 64, 65));
     n1_framesCorriendo.push_back(extraer(490, 44, 51, 65));
 
-    // SALTO (12 frames)
+    // SALTO
     n1_framesSaltando.clear();
+    n1_framesSaltando.push_back(extraer( 19, 154, 36, 49));
+    n1_framesSaltando.push_back(extraer( 74, 145, 32, 58));
+    n1_framesSaltando.push_back(extraer( 74, 145, 32, 58));
+    n1_framesSaltando.push_back(extraer(114, 121, 50, 82));
+    n1_framesSaltando.push_back(extraer(114, 121, 50, 82));
+    n1_framesSaltando.push_back(extraer(165, 115, 77, 61));
+    n1_framesSaltando.push_back(extraer(165, 115, 77, 61));
+    n1_framesSaltando.push_back(extraer(254, 133, 38, 70));
+    /*
     n1_framesSaltando.push_back(extraer( 18, 110, 38, 98));
     n1_framesSaltando.push_back(extraer( 70, 110, 57, 98));
     n1_framesSaltando.push_back(extraer(127, 110, 58, 98));
@@ -547,7 +631,7 @@ void Personaje::cargarSpritesNivel1()
     n1_framesSaltando.push_back(extraer(506, 110, 45, 98));
     n1_framesSaltando.push_back(extraer(552, 110, 43, 98));
     n1_framesSaltando.push_back(extraer(605, 110, 39, 98));
-
+*/
     // DOBLE SALTO — vacío hasta que tengas los frames en el sheet
     n1_framesDobleSalto.clear();
 
@@ -724,8 +808,19 @@ void Personaje::setHitboxOffset(float offsetX, float offsetY,
     hitboxOffsetY   = offsetY;
     hitboxAnchoReal = anchoEfectivo;
     hitboxAltoReal  = altoEfectivo;
-    ANCHO           = anchoEfectivo;
-    ALTO            = altoEfectivo;
+    // NOTA: ANCHO/ALTO y spriteAncho/spriteAlto NO se tocan aquí.
+    // La hitbox es completamente independiente del sprite visual.
+}
+
+// ============================================================
+//  setSpriteSize — tamaño visual del sprite para nivel 1
+//  No afecta hitbox, física ni colisiones.
+//  Llamar antes de cargarSpritesNivel1() si se quiere un tamaño distinto.
+// ============================================================
+void Personaje::setSpriteSize(float ancho, float alto)
+{
+    spriteAncho = ancho;
+    spriteAlto  = alto;
 }
 
 // ============================================================
@@ -735,7 +830,11 @@ void Personaje::aterrizarEnSuelo(float /*suloY*/)
 {
     Vy = 0.f; enSuelo = true; saltosRestantes = 2; tiempoViento = 0.f;
     yMasAlta = y;   // resetear referencia de altura tras aterrizar
-    if (itemGrafico) itemGrafico->setPos(x, y);
+    if (itemGrafico) {
+        float spX = x + hitboxOffsetX - (spriteAncho - hitboxAnchoReal) * 0.5f;
+        float spY = y + hitboxOffsetY - (spriteAlto  - hitboxAltoReal)  * 0.5f;
+        itemGrafico->setPos(spX, spY);
+    }
 }
 
 void Personaje::despegarSuelo() { enSuelo = false; }
@@ -757,6 +856,7 @@ void Personaje::resetearPosicion(float rx, float ry)
     boostActivo=false; tiempoBoost=0.f;
     estadoAnim=EstadoAnim::IDLE; frameActual=0;
     if (itemGrafico) itemGrafico->setRotation(0.f);  // ← agregar
+    // Posición inicial: el offset visual se aplicará en el primer tick de actualizarNivel1.
     if (itemGrafico) itemGrafico->setPos(x,y);
 }
 
@@ -769,8 +869,8 @@ void Personaje::recrearItem()
 {
     itemGrafico = new QGraphicsPixmapItem();
     itemGrafico->setPixmap(n1_framesIdle.empty()
-        ? [](){ QPixmap p(70,70); p.fill(Qt::red); return p; }()
-        : n1_framesIdle[0]);
+                               ? [](){ QPixmap p(70,70); p.fill(Qt::red); return p; }()
+                               : n1_framesIdle[0]);
     itemGrafico->setPos(x, y);
 }
 
@@ -782,4 +882,3 @@ bool  Personaje::isEnSuelo()       const { return enSuelo;      }
 bool  Personaje::isBoostActivo()   const { return boostActivo;  }
 bool  Personaje::isDeslizando()    const { return deslizando;   }
 float Personaje::getYMasAlta()     const { return yMasAlta;     }
-

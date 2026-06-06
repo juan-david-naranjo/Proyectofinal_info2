@@ -19,6 +19,24 @@ bool Enemigo::operator==(const Enemigo& otro) const
     return x == otro.x && y == otro.y && velocidad == otro.velocidad;
 }
 
+// ============================================================
+//  Operador de asignación — Regla de los Tres
+//  Enemigo no posee recursos dinámicos propios (itemGrafico
+//  pertenece a la escena Qt y se gestiona en EntidadJuego).
+//  Se delega en la base y se copian los campos propios.
+// ============================================================
+Enemigo& Enemigo::operator=(const Enemigo& otro)
+{
+    if (this == &otro) return *this;
+    EntidadJuego::operator=(otro);   // posición, velocidad, activa (itemGrafico ignorado)
+    velocidad    = otro.velocidad;
+    radio        = otro.radio;
+    jugadorPosX  = otro.jugadorPosX;
+    jugadorPosY  = otro.jugadorPosY;
+    return *this;
+}
+
+
 // El ciclo del agente: percibir → razonar → actuar
 // Las subclases implementan cada paso; aquí se orquesta.
 // NOTA: percibir() necesita las coordenadas del jugador, que el nivel

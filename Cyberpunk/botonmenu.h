@@ -63,7 +63,8 @@ private:
     float   alto;
     bool    hovered;    // ratón encima
     bool    presionado; // botón siendo pulsado
-    BotonMenu(const BotonMenu&) = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
+    BotonMenu(const BotonMenu&)            = delete;  // -> Sobrecarga Obligatoria QObject impide copiar
+    BotonMenu& operator=(const BotonMenu&) = delete;  // -> Regla de los Tres: bloquear asignación
 };
 
 #endif // BOTONMENU_H

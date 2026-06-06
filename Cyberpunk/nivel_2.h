@@ -31,6 +31,7 @@ public:
     // ════════════════════════════════════════════════════════════════════════
     Nivel_2();
     Nivel_2(const Nivel_2& otro); // Sobrecarga Obligatoria
+    Nivel_2& operator=(const Nivel_2& otro); // Regla de los Tres: asignación profunda
     bool operator==(const Nivel_2& otro) const;
     ~Nivel_2() override;
 

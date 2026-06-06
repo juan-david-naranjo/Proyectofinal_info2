@@ -3,6 +3,7 @@
 #include <QFont>
 #include <QBrush>
 #include <QPen>
+#include <QApplication>
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Constructor / Destructor
@@ -48,11 +49,11 @@ void GameManager::cargarSonidos()
 {
     musicaMenu.setAudioOutput(&audioMenu);
     musicaMenu.setSource(QUrl("qrc:/sonidoswav/Sonidos/End of Line (From TRON_ LegacyScore).mp3"));
-    audioMenu.setVolume(0.5f);
+    audioMenu.setVolume(0.3f);
     musicaMenu.setLoops(QMediaPlayer::Infinite);
 
     sonidoClick.setSource(QUrl("qrc:/sonidoswav/Sonidos/clickwav.wav"));
-    sonidoClick.setVolume(0.8f);
+    sonidoClick.setVolume(0.4f);
 }
 
 void GameManager::detenerTodaMusica()
@@ -586,9 +587,14 @@ void GameManager::mostrarMenu()
         irASeleccionDificultad();
     }, Qt::QueuedConnection);
 
+    BotonMenu* btnSalir = agregarBotonOverlay("✕  SALIR", 80.f);
+    connect(btnSalir, &BotonMenu::clicked, this, [](){
+        QApplication::quit();
+    }, Qt::QueuedConnection);
+
     agregarTextoOverlay(
         "WASD — Mover  |  ESPACIO — Saltar/Boost  |  ESC — Pausa",
-        QColor(90, 110, 100), 13, 110.f);
+        QColor(90, 110, 100), 13, 140.f);
 }
 
 // ── Selección de dificultad ───────────────────────────────────────────────
