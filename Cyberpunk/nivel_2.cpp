@@ -179,17 +179,18 @@ void Nivel_2::inicializar(Personaje* p)
     jugador = p;
     sinVidas           = false;
     completado         = false;
-    jugador->setVidas(2);
-    jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
     loadDestAnim();         //animacion de destruccion de computadora
 
     generarLaberinto();
     generarRobots();
 
 
-    if (jugador)
+    if (jugador){
+        jugador->resetearEfectos();
         jugador->resetearPosicion(spawnX, spawnY);
-
+        jugador->setVidas(2);
+        jugador->setHitboxOffset(20.f,15.f,50.f, 100.f);  // baja 15px, alto efectivo 90px
+    }
 
 
     // ── Inicializar estados anteriores de los robots ──────────────────────
@@ -710,7 +711,7 @@ void Nivel_2::actualizar(float dt)
         float jy = jugador->getY() + jugador->getAlto()  * 0.3f;
 
         // 2. Definir el radio de visión (cuánto puede ver a su alrededor en píxeles)
-        float radioVision = 180.f; // Puedes jugar con este número para tunear la dificultad
+        float radioVision = 130.f; // Puedes jugar con este número para tunear la dificultad
 
         // 3. Crear el gradiente radial centrado en el jugador
         QRadialGradient gradiente(jx, jy, radioVision);

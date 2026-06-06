@@ -64,7 +64,7 @@ private:
     static constexpr float ESCENA_H     = 1433.f;
 
     // ── Constantes del juego ──────────────────────────────────
-    static constexpr int   TIEMPO_NIVEL = 90;
+    static constexpr int   TIEMPO_NIVEL = 50;
     static constexpr float LIMITE_CAIDA = ESCENA_H + 50.f;
     static constexpr float META_Y       = 310.f;
     static constexpr float CAM_OFFSET_Y = 150.f;

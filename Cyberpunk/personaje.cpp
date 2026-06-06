@@ -860,6 +860,16 @@ void Personaje::resetearPosicion(float rx, float ry)
     if (itemGrafico) itemGrafico->setPos(x,y);
 }
 
+void Personaje::resetearEfectos()
+{
+    boostActivo = false;
+    tiempoSigiloActivo = 0.f;
+
+    // Aquí debes apagar la variable interna que controla el sigilo.
+    // Como tu función se llama 'isSigiloActivo()', imagina que tu variable se llama 'sigiloActivo' o 'enSigilo'
+}
+
+
 void Personaje::invalidarItem()
 {
     itemGrafico = nullptr;
