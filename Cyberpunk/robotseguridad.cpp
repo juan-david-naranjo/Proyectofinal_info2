@@ -21,7 +21,6 @@ RobotSeguridad::RobotSeguridad(float px, float py,
     , tiempoFrame(0.f)
     , duracionFramePatrullaje(0.1f)
     , duracionFrameAlert(0.15f)
-    // ── Estos son los que faltaban ─────────────────────────────
     , indiceWaypoint(0)          // ← crítico: índice al primer waypoint
     , tiempoPersecucion(0.f)
     , distanciaJugador(0.f)
@@ -77,12 +76,12 @@ bool RobotSeguridad::operator==(const RobotSeguridad& otro) const
     return x == otro.x && y == otro.y && estado == otro.estado;
 }
 
-// ============================================================
+
 //  Operador de asignación — Regla de los Tres
 //  RobotSeguridad no posee heap propio más allá de lo que hereda
 //  (itemGrafico en EntidadJuego). Los vectores de QPixmap usan
 //  copy-on-write de Qt. Se copian todos los campos de estado de IA.
-// ============================================================
+
 RobotSeguridad& RobotSeguridad::operator=(const RobotSeguridad& otro)
 {
     if (this == &otro) return *this;
@@ -116,16 +115,16 @@ RobotSeguridad& RobotSeguridad::operator=(const RobotSeguridad& otro)
     return *this;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+
 //  cargarSprites
 //  Recibe la QPixmap ya cargada (misma hoja que el personaje u otra).
 //  Elimina los fondos de cada grupo de animación de forma independiente.
-// ════════════════════════════════════════════════════════════════════════════
+
 void RobotSeguridad::cargarSprites(const QPixmap& sheet)
 {
     if (sheet.isNull()) return;
 
-    // ── Helper: elimina un color de fondo con tolerancia ─────────────────────
+    // Helper: elimina un color de fondo con tolerancia
     auto quitarFondo = [](const QPixmap& src, QColor fondo, int tol) -> QPixmap
     {
         QImage img = src.toImage().convertToFormat(QImage::Format_ARGB32);
@@ -194,7 +193,7 @@ void RobotSeguridad::cargarSprites(const QPixmap& sheet)
 
     }
 
-    // ── Aplicar primer frame y pivote de rotación en el centro ───────────────
+    //Aplicar primer frame y pivote de rotación en el centro
     if (itemGrafico && !framesPatrullaje.empty())
     {
         const QPixmap& f0 = framesPatrullaje.at(0);
@@ -244,7 +243,7 @@ void RobotSeguridad::moverHacia(float tx, float ty, float dt)
 
 
 
-// ── PERCIBIR ─────────────────────────────────────────────────────────────────
+// PERCIBIR
 // Calcula la distancia al jugador y actualiza la posición conocida.
 void RobotSeguridad::percibir(float jx, float jy)
 {
@@ -303,7 +302,7 @@ void RobotSeguridad::razonar(bool jugadorOculto)
 
 }
 
-// ── ACTUAR ───────────────────────────────────────────────────────────────────
+//  ACTUAR
 // Ejecuta el movimiento según el estado.
 // void RobotSeguridad::actuar(float dt)
 void RobotSeguridad::actuar(float dt){
@@ -489,7 +488,7 @@ void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
     float nx = dx / dist, ny = dy / dist;
     const float TAM = 32.f;
 
-    // ── FIX 1: Sonda adaptativa ───────────────────────────────────────────────
+    //FIX 1: Sonda adaptativa
     // Si el robot está más cerca que TAM*1.5 del objetivo, la sonda se acorta
     // al propio destino — evita detectar paredes que están DESPUÉS del waypoint.
     const float SONDA = std::min(TAM * 1.5f, dist);
@@ -505,7 +504,7 @@ void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
         targetVx = nx * velActual;
         targetVy = ny * velActual;
     }
-    // ── FIX 2: Guard de componente cero ──────────────────────────────────────
+    // Guard de componente cero
     // Deslizar en X solo tiene sentido si hay componente horizontal real (nx ≠ 0).
     // Si nx ≈ 0 (movimiento puramente vertical), targetVx = 0 → robot parado.
     // En ese caso caer directo a las perpendiculares.
@@ -550,7 +549,7 @@ void RobotSeguridad::moverHaciaConEvacion(float tx, float ty, float dt)
     y += Vy * dt;
 }
 
-// ── TICK (método completo para el nivel) ─────────────────────────────────────
+// TICK (método completo para el nivel)
 // void RobotSeguridad::tick(float jx, float jy, float dt)
 // {
 //     percibir(jx, jy);
@@ -575,7 +574,7 @@ void RobotSeguridad::tick(float jx, float jy, float dt,
     actuar(dt);               // ← firma original intacta, override válido
 }
 
-// ── APRENDIZAJE: actualizar waypoints ────────────────────────────────────────
+// APRENDIZAJE: actualizar waypoints
 // Añade la última posición vista del jugador al patrón de vigilancia.
 void RobotSeguridad::actualizarWaypoints()
 {
@@ -594,7 +593,6 @@ void RobotSeguridad::actualizarWaypoints()
     waypoints.insert(it, nuevoPunto);
 }
 
-// ── MOVIMIENTO CON INERCIA ───────────────────────────────────────────────────
-// Mueve el robot hacia (tx, ty) usando MRUA en ambos ejes.
+
 
 

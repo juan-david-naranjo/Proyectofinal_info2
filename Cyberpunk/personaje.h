@@ -52,7 +52,7 @@ public:
     Personaje& operator=(const Personaje& otro);  // Regla de los Tres
     bool operator==(const Personaje& otro) const;
 
-    // ── Entrada ──────────────────────────────────────────────
+    // Entrada
     void keyPressed (int key);
     void keyReleased(int key);
     void saltar();
@@ -60,7 +60,7 @@ public:
     void activarDesliz();           // nivel 1 (solo en suelo)
     void activarDeslizNivel2();     // nivel 2 (en movimiento, con impulso)
 
-    // ── Actualización ─────────────────────────────────────────
+    //  Actualización
     void actualizar(float dt) override;
     void actualizarNivel1(float dt, float tiempoTotal);
     void actualizarNivel2(float dt);
@@ -73,19 +73,19 @@ public:
     void invalidarItem();
     void recrearItem();
 
-    // ── Caída final (nivel 1) ─────────────────────────────────
+    // Caída final (nivel 1)
     void activarCaidaFinal();
     bool caidaFinalTerminada() const;
 
-    // ── Hitbox ajustable (nivel 2) ────────────────────────────
+    //  Hitbox ajustable (nivel 2)
     void setHitboxOffset(float offsetX, float offsetY,
                          float anchoEfectivo, float altoEfectivo);
 
-    // ── Tamaño visual del sprite (solo nivel 1) ───────────────
+    // Tamaño visual del sprite (solo nivel 1)
     // No afecta hitbox ni física. Llamar ANTES de cargarSpritesNivel1().
     void setSpriteSize(float ancho, float alto);
 
-    // ── Getters ───────────────────────────────────────────────
+    //Getters
     int   getVidas()        const;
     float getEnergia()      const;
     bool  isEnSuelo()       const;
@@ -107,18 +107,18 @@ public:
 
 
 
-    // ── Daño / reset ──────────────────────────────────────────
+    // Daño / reset
     void recibirDanio(int cantidad = 1);
     void resetearPosicion(float rx, float ry);
 
     void resetearEfectos();
 
 private:
-    // ── Tamaño lógico de la hitbox (modificable via setHitboxOffset) ──
+    // Tamaño lógico de la hitbox (modificable via setHitboxOffset)
     float ANCHO = 70.f;
     float ALTO  = 70.f;
 
-    // ── Tamaño visual del sprite nivel 1 (independiente de la hitbox) ──
+    // Tamaño visual del sprite nivel 1 (independiente de la hitbox)
     // Estos valores NO se tocan al llamar setHitboxOffset.
     float spriteAncho = 70.f;
     float spriteAlto  = 70.f;
@@ -129,10 +129,10 @@ private:
     float hitboxAnchoReal = 40.f;
     float hitboxAltoReal  = 62.f;
 
-    // ── Helpers ───────────────────────────────────────────────
+    //Helpers
     QPixmap eliminarFondo(const QPixmap& src, QColor cf, int tol);
 
-    // ── Animaciones Nivel 1 ───────────────────────────────────
+    //Animaciones Nivel 1
     std::vector<QPixmap> n1_framesIdle;
     std::vector<QPixmap> n1_framesCorriendo;
     std::vector<QPixmap> n1_framesSaltando;
@@ -141,14 +141,14 @@ private:
     std::vector<QPixmap> n1_framesColision;
     std::vector<QPixmap> n1_framesCaidaFinal;
 
-    // ── Animaciones Nivel 2 ───────────────────────────────────
+    // Animaciones Nivel 2
     std::vector<QPixmap> framesIdle;
     std::vector<QPixmap> framesCorriendo;
     std::vector<QPixmap> framesDeslizando;
     std::vector<QPixmap> framesUprun;
     std::vector<QPixmap> framesDownrun;
 
-    // ── Estado de animación ───────────────────────────────────
+    // Estado de animación
     enum class EstadoAnim {
         // Comunes
         IDLE,
@@ -173,7 +173,7 @@ private:
     bool       miraDerecha;
     bool       enCaidaFinal;       // bloquea física durante animación caída
 
-    // ── Estado general ────────────────────────────────────────
+    //  Estado general
     int   vidas;
     float velMax;
     float energia;          //para el boost
@@ -181,23 +181,23 @@ private:
     bool  keys[4];       // 0=Izq 1=Der 2=Up 3=Down
     QPixmap* Sprite;
 
-    // ── Salto ─────────────────────────────────────────────────
+    // Salto
     bool  puedeDoubleSalto;
     float fuerzaSalto;
     int   saltosRestantes;
     float tiempoViento;
     static constexpr float UMBRAL_VIENTO = 0.6f;
 
-    // ── Caída profunda (nivel 1) ──────────────────────────────
+    // Caída profunda (nivel 1)
     float yMasAlta;
     int   plataformasCalda;
 
-    // ── Deslizamiento ─────────────────────────────────────────
+    // Deslizamiento
     bool  deslizando;
     float tiempoDesliz;
     static constexpr float DURACION_DESLIZ_MAX = 0.8f;
 
-    // ── Boost ─────────────────────────────────────────────────
+    //Boost
     bool  boostActivo;          //bandera
     float tiempoBoost;          //temporizador
     float cooldownBoost=0.f;
@@ -205,7 +205,7 @@ private:
 
     ClaseActiva clase = ClaseActiva::VELOCISTA; // Por defecto
 
-    // ── Habilidad Especial (Reemplaza las variables del boost) ──
+    // Habilidad Especial (Reemplaza las variables del boost)
     float cooldownHabilidad = 0.f;
     static constexpr float COOLDOWN_MAX = 5.f;
 
@@ -213,7 +213,7 @@ private:
     float tiempoSigiloActivo = 0.f;
     static constexpr float DURACION_SIGILO = 2.f;
 
-    // ── tickAnimacion ─────────────────────────────────────────
+    //tickAnimacion
     void tickAnimacion(float dt, std::vector<QPixmap>& frames,
                        bool loop, float multVelocidad = 1.0f);
 };

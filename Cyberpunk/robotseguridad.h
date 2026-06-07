@@ -32,7 +32,7 @@ enum class EstadoAgente { PATRULLAJE, PERSECUCION };
 class RobotSeguridad : public Enemigo
 {
 public:
-    // ── Constructor ─────────────────────────────────────────
+    // Constructor
     /**
      * @param x,y              Posición inicial
      * @param radioDeteccion   Px del radio de visión
@@ -52,10 +52,10 @@ public:
     RobotSeguridad& operator=(const RobotSeguridad& otro);  // Regla de los Tres
     bool operator==(const RobotSeguridad& otro) const;
 
-    // ── Estado del agente ────────────────────────────────────
+    //Estado del agente
     EstadoAgente estado;
 
-    // ── Ciclo del agente ─────────────────────────────────────
+    //  Ciclo del agente
     void percibir(float jugadorX, float jugadorY) override;
     void razonar()  override{ razonar(false);}
     void razonar(bool jugadorOculto = false) ;
@@ -107,7 +107,7 @@ private:
     float duracionFramePatrullaje;
     float duracionFrameAlert;
 
-    // ── Detección de atasco ───────────────────────────────────
+    //Detección de atasco
     float   posXAnterior  = 0.f;
     float   posYAnterior  = 0.f;
     float   tiempoStuck   = 0.f;
