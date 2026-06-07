@@ -76,12 +76,12 @@ Nivel_2::Nivel_2(const Nivel_2& otro)
         robots.push_back(new RobotSeguridad(*r));
 }
 
-// ============================================================
+
 //  Operador de asignación — Regla de los Tres
 //  Libera robots y Escenario propios antes de copiar los del otro.
 //  Los ítems Qt (escena, HUD) no se copian; la copia debe llamar
 //  a setScene() + inicializar() para reconstruirlos.
-// ============================================================
+
 Nivel_2& Nivel_2::operator=(const Nivel_2& otro)
 {
     if (this == &otro) return *this;
@@ -167,7 +167,7 @@ void Nivel_2::limpiarRobots()
 
 
 
-// ── Inicializar ──────────────────────────────────────────────────────────────
+//  Inicializar
 void Nivel_2::inicializar(Personaje* p)
 {
 
@@ -193,7 +193,7 @@ void Nivel_2::inicializar(Personaje* p)
     }
 
 
-    // ── Inicializar estados anteriores de los robots ──────────────────────
+    //  Inicializar estados anteriores de los robots
     // Necesario para detectar el CAMBIO de estado (no el estado en sí)
     estadosAnteriores.assign(robots.size(), EstadoAgente::PATRULLAJE);
     playMusic();
@@ -202,7 +202,7 @@ void Nivel_2::inicializar(Personaje* p)
         agregarItemsEscena();
 }
 
-// ── Generar paredes del laberinto ─────────────────────────────────────────────
+//  Generar paredes del laberinto
 // Rectángulos AABB que actúan como obstáculos (reutiliza Plataforma).
 void Nivel_2::generarLaberinto()
 {
@@ -211,13 +211,13 @@ void Nivel_2::generarLaberinto()
 
 
 
-    // ── Bordes del nivel (1250 × 700) ──────────────────────────────────────
+    //  Bordes del nivel (1250 × 700)
     plataformas.push_back(new Plataforma(  20.f,   0.f, 1295.f,  30.f,false,Plataforma::TipoMuro::HORIZONTAL)); // Techo
     plataformas.push_back(new Plataforma(  20.f, 815.f, 1295.f,  30.f,false,Plataforma::TipoMuro::HORIZONTAL)); // Suelo
     plataformas.push_back(new Plataforma(  0.f,   0.f,  30.f, 815.f,false,Plataforma::TipoMuro::VERTICAL)); // Pared izq
     plataformas.push_back(new Plataforma(1295.f,   0.f,  30.f, 815.f,false,Plataforma::TipoMuro::VERTICAL)); // Pared der
 
-    // ── Paredes internas del laberinto (vista cenital) ────────────────────
+    //  Paredes internas del laberinto (vista cenital)
     // Estructura: {x, y, ancho, alto}
     struct Wall { float x, y, w, h; Plataforma::TipoMuro tipo; };
     static const Wall paredes[] =
@@ -244,7 +244,7 @@ void Nivel_2::generarLaberinto()
 
 }
 
-// ── Generar robots ────────────────────────────────────────────────────────────
+//  Generar robots
 
 
 void Nivel_2::generarRobots()
@@ -267,7 +267,7 @@ void Nivel_2::generarRobots()
         VELPERSECUSION = 110.f;
     }
 
-    // ── Robot 1: patrulla el sector izquierdo ─────────────────────────────
+    //  Robot 1: patrulla el sector izquierdo
     std::vector<Punto2D> wp1 = {
         {220.f, 96.f}, {220.f, 440.f},{220.f,96.f},{1000.f,96.f}
     };
@@ -282,7 +282,7 @@ void Nivel_2::generarRobots()
         wp1
         ));
 
-    // ── Robot 2: patrulla el sector central ──────────────────────────────
+    //  Robot 2: patrulla el sector central
     std::vector<Punto2D> wp2 = {
         {1253.f, 715.f}, {184.f, 715.f},
         {700.f, 715.f}, {700.f, 512.f},{366.f,512.f},{366.f,412.f},{366.f,512.f},{700.f,512.f},
@@ -297,7 +297,7 @@ void Nivel_2::generarRobots()
         wp2
         ));
 
-    // ── Robot 3: guarda la computadora (mayor radio, más rápido) ─────────
+    //  Robot 3: guarda la computadora (mayor radio, más rápido)
     std::vector<Punto2D> wp3 = {
         {676.f, 250.f}, {676.f, 380.f},         //up-down
 
@@ -342,7 +342,7 @@ void Nivel_2::agregarItemsEscena()
         jugador->getItem()->setZValue(4.0);
         escena->addItem(jugador->getItem());
     }
-    // ── SI ES MODO DIFÍCIL, CREAMOS EL FILTRO DE OSCURIDAD ──
+    // SI ES MODO DIFÍCIL, CREAMOS EL FILTRO DE OSCURIDAD
     if (modoDificil)
     {
         // El rectángulo debe medir lo mismo que tu mapa (ej. 2000x2000 o lo que mida tu laberinto)
@@ -364,7 +364,7 @@ void Nivel_2::agregarItemsEscena()
 
 void Nivel_2::actualizarHUD()
 {
-    // ── Timer ─────────────────────────────────────────────────────────────
+    //  Timer
     if (itemHUDTimer)
     {
         int mins = tiempoRestante / 60;
@@ -387,7 +387,7 @@ void Nivel_2::actualizarHUD()
     }
     int vidasActuales=jugador->getVidas();
 
-    // ── Corazones ─────────────────────────────────────────────────────────
+    // Corazones
     for (int i = 0; i < static_cast<int>(itemsCorazones.size()); i++)
     {
         if (i < vidasActuales)
@@ -462,9 +462,8 @@ void Nivel_2::cargarSpriteObjetivo(const QPixmap& hoja,
 
 
 
-// ════════════════════════════════════════════════════════════════════════════
 //  crearSpriteRobot  — dibuja un robot sencillo con QPainter
-// ════════════════════════════════════════════════════════════════════════════
+
 QPixmap Nivel_2::crearSpriteRobot(int w, int h)
 {
     QPixmap pix(w, h);
@@ -499,9 +498,9 @@ QPixmap Nivel_2::crearSpriteRobot(int w, int h)
 }
 
 
-// ════════════════════════════════════════════════════════════════════════════
+
 //  resolverColisiones  — empuja al jugador fuera de las paredes (AABB)
-// ════════════════════════════════════════════════════════════════════════════
+
 void Nivel_2::resolverColisiones()
 {
     if (!jugador) return;
@@ -528,10 +527,9 @@ void Nivel_2::resolverColisiones()
     jugador->setVelocidad(jvx, jvy);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 //  actualizarCirculosDeteccion  — mueve y recolorea los anillos de radar
 //  cada tick, reflejando el estado actual de cada robot (PATRULLAJE / PERSECUCION)
-// ════════════════════════════════════════════════════════════════════════════
+
 void Nivel_2::actualizarCirculosDeteccion()
 {
     for (int i = 0; i < (int)robots.size() && i < itemsDeteccion.size(); i++)
@@ -564,7 +562,7 @@ void Nivel_2::actualizarCirculosDeteccion()
 
 
 
-// ── Actualizar ────────────────────────────────────────────────────────────────
+//  Actualizar
 void Nivel_2::actualizar(float dt)
 {
 
@@ -572,7 +570,7 @@ void Nivel_2::actualizar(float dt)
 
     bool oculto = jugador->isSigiloActivo();
 
-    // // ── Tick robots: centro del jugador + flag de sombra ─────────────────
+    // // Tick robots: centro del jugador + flag de sombra
 
     float jx = jugador->getX() + jugador->getAncho() * 0.5f;
     float jy = jugador->getY() + jugador->getAlto()  * 0.5f;
@@ -633,7 +631,7 @@ void Nivel_2::actualizar(float dt)
 
         i++;
     }
-    // // ── 3. HITBOX ROBOTS: actualizar posición de los rects debug ─────────────
+    // 3. HITBOX ROBOTS: actualizar posición de los rects debug
     // for (int i = 0; i < static_cast<int>(robots.size()) &&
     //                 i < static_cast<int>(debugRobotsRect.size()); i++)
     // {
@@ -644,7 +642,7 @@ void Nivel_2::actualizar(float dt)
     //         );
     // }
 
-    // ── Timer: usar acumulador para descontar segundos exactos ────────────
+    // Timer: usar acumulador para descontar segundos exactos
     // BUG ORIGINAL: (int)dt siempre es 0 a 60 fps (dt ≈ 0.016).
     // CORRECCIÓN: acumular y descontar solo cuando se completa un segundo.
     tiempoContador += dt;
@@ -656,7 +654,7 @@ void Nivel_2::actualizar(float dt)
         if (tiempoRestante < 0) tiempoRestante = 0;
     }
 
-    // ── Actualizar personaje (físicas nivel 2: inercia + 4 direcciones) ───
+    // Actualizar personaje (físicas nivel 2: inercia + 4 direcciones)
     jugador->actualizarNivel2(dt);
     // if (escena)
     // {
@@ -671,14 +669,14 @@ void Nivel_2::actualizar(float dt)
     //     debugJugadorRect->setVisible(!oculto);
     // }
 
-    // ── Resolver colisiones del jugador con las paredes ───────────────────
+    //  Resolver colisiones del jugador con las paredes
     resolverColisiones();
 
 
-    // ── Actualizar círculos de detección en la escena ─────────────────────
+    // Actualizar círculos de detección en la escena
     actualizarCirculosDeteccion();
 
-    // ── Actualizar HUD cada tick ──────────────────────────────────────────────
+    // Actualizar HUD cada tick
     actualizarHUD();
 
     // 2. Corregir el parpadeo de iframes para que no interfiera con el ocultamiento:
@@ -703,7 +701,7 @@ void Nivel_2::actualizar(float dt)
         qDebug()<<"perdiste por tiempo";
     }
 
-    // ── ACTUALIZAR LA LINTERNA / NIEBLA DE GUERRA ──
+    //ACTUALIZAR LA LINTERNA / NIEBLA DE GUERRA
     if (modoDificil && filtroOscuridad && jugador)
     {
         // 1. Obtener el centro exacto del jugador
@@ -730,7 +728,7 @@ void Nivel_2::actualizar(float dt)
     }
 
 
-    // ── Comprobar condiciones de fin ──────────────────────────────────────
+    // Comprobar condiciones de fin
     verificarDeteccion();
     verificarVictoria(dt);
     if (animandoDestruccion)
@@ -749,12 +747,12 @@ void Nivel_2::actualizar(float dt)
 
 
 
-// ── Detección: si un robot toca al jugador → daño + respawn ──────────────────
+//  Detección: si un robot toca al jugador → daño + respawn
 void Nivel_2::verificarDeteccion()
 {
 
 
-    // ── 1. GESTIÓN DE ALERTAS Y MÚSICA ────────────────────────────────────
+    // 1. GESTIÓN DE ALERTAS Y MÚSICA
     bool nuevaDeteccion = false;
     int robotsPersiguiendo = 0; // Para saber si AL MENOS UNO te persigue
 
@@ -777,7 +775,7 @@ void Nivel_2::verificarDeteccion()
         estadosAnteriores[i] = estadoActual;  // actualizar para el próximo tick
     }
 
-    // ── Control del Audio basado en los contadores ──
+    //Control del Audio basado en los contadores
     if (nuevaDeteccion) {
         sonidoDeteccion.play();   // ¡Un robot te vio! Suena la alerta
         musicaFondo.stop();       // Cortar música tranquila
@@ -790,7 +788,7 @@ void Nivel_2::verificarDeteccion()
     }
 
 
-    // ── 2. GESTIÓN DE DAÑO Y CAPTURA ──────────────────────────────────────
+    //  2. GESTIÓN DE DAÑO Y CAPTURA
     for (RobotSeguridad* robot : robots)
     {
         if (!robot->atrapoJugador()) continue;
@@ -806,7 +804,7 @@ void Nivel_2::verificarDeteccion()
             continue;
         }
 
-        // ── Recibir daño (Limpié las líneas duplicadas que tenías) ──
+        //  Recibir daño (Limpié las líneas duplicadas que tenías)
         jugador->recibirDanio(1);
         sonidoDanio.play();
         tiempoInvulnerable = DURACION_INVULNERABLE;
