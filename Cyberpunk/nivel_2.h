@@ -26,24 +26,24 @@
 class Nivel_2 : public Nivel
 {
 public:
-    // ════════════════════════════════════════════════════════════════════════
+
     //  CONSTRUCTORES, DESTRUCTOR Y OPERADORES
-    // ════════════════════════════════════════════════════════════════════════
+
     Nivel_2();
     Nivel_2(const Nivel_2& otro); // Sobrecarga Obligatoria
     Nivel_2& operator=(const Nivel_2& otro); // Regla de los Tres: asignación profunda
     bool operator==(const Nivel_2& otro) const;
     ~Nivel_2() override;
 
-    // ════════════════════════════════════════════════════════════════════════
+
     //  MÉTODOS HEREDADOS (OVERRIDES)
-    // ════════════════════════════════════════════════════════════════════════
+
     void inicializar(Personaje* p) override;
     void actualizar(float dt) override;
 
-    // ════════════════════════════════════════════════════════════════════════
+
     //  MÉTODOS DE CONTROL DE ESCENA Y FLUJO
-    // ════════════════════════════════════════════════════════════════════════
+
     void setScene(QGraphicsScene* scene);
     void setDificultad(bool dificil);
     void limpiarEscena();
@@ -52,15 +52,14 @@ public:
     void stopMusic();
     void playMusic();
 
-    // ════════════════════════════════════════════════════════════════════════
     //  GETTERS DE ESTADO (PARA INTERFAZ / HUD EXTERNO)
-    // ════════════════════════════════════════════════════════════════════════
+
     int  getTiempoRestante() const;
     bool isCompletado()      const;
 
-    // ════════════════════════════════════════════════════════════════════════
+
     //  MÉTODOS DE CARGA DE ASSETS Y CONFIGURACIÓN GRAPHICS ITEMS
-    // ════════════════════════════════════════════════════════════════════════
+
     void cargarSpriteObjetivo(const QPixmap& hoja, int srcX, int srcY, int srcW, int srcH);
     void cargarSpritesZonas(const QPixmap &hoja, int oxAnim, int oyAnim, int fwA, int fhA, int numAnim, int sepAnim, int oxE, int oyE, int fwE, int fhE, const std::vector<QColor>& fondos, int tolerancia = 10);
 
@@ -72,9 +71,6 @@ public:
     void loadDestAnim();
     void addHudScene();
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  ATRIBUTOS PÚBLICOS
-    // ════════════════════════════════════════════════════════════════════════
     bool sinVidas = false;
     QPixmap* Escenario = nullptr;
     std::vector<RobotSeguridad*> robots;
@@ -86,11 +82,7 @@ private:
 
     QGraphicsRectItem* filtroOscuridad = nullptr;
 
-
-    // ════════════════════════════════════════════════════════════════════════
     //  MÉTODOS PRIVADOS INTERNOS (HELPERS DE LOGICA)
-    // ════════════════════════════════════════════════════════════════════════
-
     // Inicialización y Generación
     void generarLaberinto();
     void generarRobots();
@@ -112,9 +104,9 @@ private:
     void actualizarAnimDestruccion(float dt);
     static QPixmap crearSpriteRobot(int w, int h);
 
-    // ════════════════════════════════════════════════════════════════════════
+
     //  VARIABLES MIEMBRO PRIVADAS (ESTADO INTERNO)
-    // ════════════════════════════════════════════════════════════════════════
+
 
     // Puntero Base del Framework
     QGraphicsScene* escena = nullptr;
